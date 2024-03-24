@@ -20,9 +20,8 @@ type MediaData struct {
 	Url            string
 	Timestamp      uint64
 	Selected       bool
-	Removed        bool
-	DurationMillis uint
-	VideoUrl       string
+	DurationMillis uint   `json:",omitempty"`
+	VideoUrl       string `json:",omitempty"`
 }
 
 func (m *MediaData) DownloadMedia() (err error) {
