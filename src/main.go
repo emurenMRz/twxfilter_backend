@@ -24,7 +24,7 @@ func main() {
 
 	inputFile := flag.Arg(0)
 
-	media, err := mediadata.ParseMediaData(inputFile)
+	media, err := mediadata.ParseMediaDataFromFile(inputFile)
 	if err != nil {
 		log.Fatal(err)
 	}

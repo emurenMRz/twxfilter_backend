@@ -44,13 +44,18 @@ func (m *MediaData) DownloadMedia() (err error) {
 	return
 }
 
-func ParseMediaData(datafile string) (media []MediaData, err error) {
+func ParseMediaData(jsonData []byte) (media []MediaData, err error) {
+	err = json.Unmarshal(jsonData, &media)
+	return
+}
+
+func ParseMediaDataFromFile(datafile string) (media []MediaData, err error) {
 	in, err := os.ReadFile(datafile)
 	if err != nil {
 		return
 	}
 
-	err = json.Unmarshal(in, &media)
+	media, err = ParseMediaData(in)
 	return
 }
 
