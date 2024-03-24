@@ -13,12 +13,15 @@ func main() {
 
 	flag.Parse()
 	if len(flag.Args()) == 0 {
+		daemonMode = true
+	} else {
 		flag.Usage()
 		return
 	}
 
 	if daemonMode {
-		// No implement.
+		log.Println("Start daemon...")
+		daemon()
 		return
 	}
 
