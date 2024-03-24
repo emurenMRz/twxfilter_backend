@@ -32,7 +32,7 @@ func main() {
 	for _, m := range media {
 		err = m.DownloadMedia()
 		if err != nil {
-			log.Panicln(err)
+			log.Println(err)
 		}
 	}
 }
