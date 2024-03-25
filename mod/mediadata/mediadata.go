@@ -14,14 +14,14 @@ import (
 )
 
 type MediaData struct {
-	Id             string
-	ParentUrl      string
-	Type           string
-	Url            string
-	Timestamp      uint64
-	Selected       bool
-	DurationMillis uint   `json:",omitempty"`
-	VideoUrl       string `json:",omitempty"`
+	Id             string `json:"id"`
+	ParentUrl      string `json:"parentUrl"`
+	Type           string `json:"type"`
+	Url            string `json:"url"`
+	Timestamp      uint64 `json:"timestamp"`
+	Selected       bool   `json:"selected"`
+	DurationMillis uint   `json:"durationMillis,omitempty"`
+	VideoUrl       string `json:"videoUrl,omitempty"`
 }
 
 func (m *MediaData) DownloadMedia() (err error) {
