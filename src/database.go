@@ -98,7 +98,15 @@ func (conn *Database) UpsertMedia(columns []string, valueTable [][]any) (err err
 		placeholder = append(placeholder, rowPlaceholder)
 	}
 
-	query := "INSERT INTO media(" + strings.Join(columns, ",") + ") VALUES (" + strings.Join(placeholder, "),(") + ") ON CONFLICT (media_id) DO UPDATE SET updated_at = EXCLUDED.updated_at"
+	query := fmt.Sprintf(`INSERT INTO media (%s)
+			VALUES (%s)
+			ON CONFLICT (media_id)
+			DO UPDATE SET
+				removed = EXCLUDED.removed,
+				updated_at = EXCLUDED.updated_at
+			`,
+		strings.Join(columns, ","),
+		strings.Join(placeholder, "),("))
 	_, err = conn.db.Exec(query, values...)
 	return
 }
