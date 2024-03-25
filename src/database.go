@@ -41,6 +41,9 @@ func Connect(config ConnectConfig) (conn *Database, err error) {
 				duration_millis NUMERIC,
 				video_url       TEXT,
 
+				content_length  BIGINT,
+				cache_path      TEXT,
+
 				removed         BOOLEAN NOT NULL DEFAULT FALSE,
 				created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -102,7 +105,22 @@ func (conn *Database) UpsertMedia(columns []string, valueTable [][]any) (err err
 }
 
 func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
-	rows, err := conn.db.Query("SELECT * FROM media WHERE removed='f' ORDER BY media_id")
+	query := `SELECT
+				media_id,
+				parent_url,
+				type,
+				url,
+				timestamp,
+				duration_millis,
+				video_url
+			FROM
+				media
+			WHERE
+				removed='f'
+			ORDER BY
+				media_id
+			`
+	rows, err := conn.db.Query(query)
 	if err != nil {
 		return
 	}
@@ -116,10 +134,7 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 		var timestamp uint64
 		var durationMillis sql.NullInt32
 		var videoUrl sql.NullString
-		var removed bool
-		var created_at time.Time
-		var updated_at time.Time
-		err = rows.Scan(&mediaId, &parentUrl, &mediaType, &url, &timestamp, &durationMillis, &videoUrl, &removed, &created_at, &updated_at)
+		err = rows.Scan(&mediaId, &parentUrl, &mediaType, &url, &timestamp, &durationMillis, &videoUrl)
 		if err != nil {
 			return
 		}
