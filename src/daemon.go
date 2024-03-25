@@ -34,8 +34,14 @@ func daemon() {
 
 	connectConfig, err := ReadConnectConfig("connect.json")
 	if err != nil {
-		log.Fatal("Failed read connect.json")
+		log.Fatal(err)
 	}
+
+	conn, err := Connect(connectConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
 
 	router.RegistorEndpoint("POST /"+selfName+"/media", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		body, err := io.ReadAll(r.Body)
@@ -55,16 +61,6 @@ func daemon() {
 			fmt.Fprint(w, err)
 			return
 		}
-
-		conn, err := Connect(connectConfig)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
-			return
-		}
-		defer conn.Close()
 
 		columns := []string{"media_id", "parent_url", "type", "url", "timestamp", "duration_millis", "video_url"}
 		var valueTable [][]any
@@ -87,8 +83,10 @@ func daemon() {
 
 			valueTable = append(valueTable, row)
 		}
+
 		err = conn.UpsertMedia(columns, valueTable)
 		if err != nil {
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			fmt.Fprint(w, err)
@@ -97,7 +95,7 @@ func daemon() {
 
 		mediaList, err := conn.GetMedia()
 		if err != nil {
-			log.Println("b", err)
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			fmt.Fprint(w, err)
@@ -126,7 +124,7 @@ func daemon() {
 
 		o, err := json.Marshal(lines)
 		if err != nil {
-			log.Println("c", err)
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			fmt.Fprintln(w, err)
@@ -135,6 +133,22 @@ func daemon() {
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		fmt.Fprint(w, string(o))
+	})
+
+	router.RegistorEndpoint("DELETE /"+selfName+"/media/:id", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
+		id := values["id"]
+
+		err := conn.DeleteMedia(id)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			fmt.Fprint(w, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		fmt.Fprint(w, "Succeed")
 	})
 
 	cgi.Serve(router.Router)

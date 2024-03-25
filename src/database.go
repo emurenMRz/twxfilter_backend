@@ -6,7 +6,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -149,5 +148,10 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 		})
 	}
 
+	return
+}
+
+func (conn *Database) DeleteMedia(id string) (err error) {
+	_, err = conn.db.Exec("UPDATE media SET removed='t' WHERE media_id=$1", id)
 	return
 }
