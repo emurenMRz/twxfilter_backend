@@ -159,7 +159,12 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 	return
 }
 
+func (conn *Database) DeleteMediaAll() (err error) {
+	_, err = conn.db.Exec("UPDATE media SET removed='t', updated_at=CURRENT_TIMESTAMP WHERE removed='f'")
+	return
+}
+
 func (conn *Database) DeleteMedia(id string) (err error) {
-	_, err = conn.db.Exec("UPDATE media SET removed='t' WHERE media_id=$1", id)
+	_, err = conn.db.Exec("UPDATE media SET removed='t', updated_at=CURRENT_TIMESTAMP WHERE removed='f' AND media_id=$1", id)
 	return
 }
