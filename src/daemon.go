@@ -9,39 +9,17 @@ import (
 	"mediadata"
 	"net/http"
 	"net/http/cgi"
-	"os"
 	"router"
-	"strings"
 )
 
-func ReadConnectConfig(confName string) (cc ConnectConfig, err error) {
-	in, err := os.ReadFile(confName)
-	if err != nil {
-		return
-	}
-
-	err = json.Unmarshal(in, &cc)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
 func daemon() {
-	t := strings.Split(os.Args[0], "/")
-	selfName := t[len(t)-1]
-
-	connectConfig, err := ReadConnectConfig("connect.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	conn, err := Connect(connectConfig)
+	conn, err := GetConnection()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
+
+	selfName := GetSelfName()
 
 	router.RegistorEndpoint("POST /"+selfName+"/media", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		body, err := io.ReadAll(r.Body)

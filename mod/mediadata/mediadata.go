@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -24,9 +25,14 @@ type MediaData struct {
 	VideoUrl       string `json:"videoUrl,omitempty"`
 }
 
-func (m *MediaData) DownloadMedia() (err error) {
+type CacheData struct {
+	ContentLength uint64
+	CachePath     string
+}
+
+func (m *MediaData) DownloadMedia(baseDir string) (cacheData CacheData, err error) {
 	if m.Type == "video" {
-		err = DownloadFile(m.VideoUrl)
+		cacheData, err = DownloadFile(baseDir, m.VideoUrl)
 		if err != nil {
 			log.Println(err)
 		}
@@ -35,7 +41,7 @@ func (m *MediaData) DownloadMedia() (err error) {
 		if err != nil {
 			log.Println(err)
 		}
-		err = DownloadFile(imageUri)
+		cacheData, err = DownloadFile(baseDir, imageUri)
 		if err != nil {
 			log.Println(err)
 		}
@@ -87,11 +93,11 @@ func normalizeImageUrl(mediaUrl string) (imageUrl string, err error) {
 	return
 }
 
-func DownloadFile(targetUrl string) error {
+func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err error) {
 	log.Println("URL: " + targetUrl)
 	u, err := url.Parse(targetUrl)
 	if err != nil {
-		return err
+		return
 	}
 
 	pathSegments := strings.Split(u.Path, "/")
@@ -99,7 +105,7 @@ func DownloadFile(targetUrl string) error {
 
 	res, err := http.Get(targetUrl)
 	if err != nil {
-		return err
+		return
 	}
 	defer res.Body.Close()
 
@@ -108,28 +114,33 @@ func DownloadFile(targetUrl string) error {
 	log.Println("Content-Type: " + strings.Join(contentTypes, "; "))
 	log.Println("Content-Length: " + strings.Join(contentLengths, "; "))
 
-	contentLength, err := strconv.ParseInt(contentLengths[0], 10, 64)
+	size, err := strconv.ParseUint(contentLengths[0], 10, 64)
 	if err != nil {
-		return err
+		return
 	}
 
-	log.Println("Output: " + filename)
-	out, err := os.Create(filename)
+	outputPath := path.Join(baseDir, filename)
+
+	log.Println("Output: " + outputPath)
+	out, err := os.Create(outputPath)
 	if err != nil {
-		return err
+		return
 	}
 	defer out.Close()
 
 	writtenSize, err := io.Copy(out, res.Body)
 	if err != nil {
-		return err
+		return
 	}
 
-	if writtenSize != contentLength {
-		err = fmt.Errorf("download error: %d/%d", writtenSize, contentLength)
-		return err
+	if uint64(writtenSize) != size {
+		err = fmt.Errorf("download error: %d/%d", writtenSize, size)
+		return
 	}
+
+	cacheData.ContentLength = size
+	cacheData.CachePath = outputPath
 
 	log.Printf("Complete")
-	return nil
+	return
 }

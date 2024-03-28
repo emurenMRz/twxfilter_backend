@@ -168,3 +168,47 @@ func (conn *Database) DeleteMedia(id string) (err error) {
 	_, err = conn.db.Exec("UPDATE media SET removed='t', updated_at=CURRENT_TIMESTAMP WHERE removed='f' AND media_id=$1", id)
 	return
 }
+
+func (conn *Database) GetNoCacheMedia() (mediaList []map[string]any, err error) {
+	query := `SELECT
+				media_id,
+				type,
+				url,
+				video_url
+			FROM
+				media
+			WHERE
+				removed='f' AND content_length IS NULL
+			ORDER BY
+				timestamp DESC
+			`
+	rows, err := conn.db.Query(query)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mediaId string
+		var mediaType string
+		var url string
+		var videoUrl sql.NullString
+		err = rows.Scan(&mediaId, &mediaType, &url, &videoUrl)
+		if err != nil {
+			return
+		}
+		mediaList = append(mediaList, map[string]any{
+			"mediaId":  mediaId,
+			"type":     mediaType,
+			"url":      url,
+			"videoUrl": videoUrl,
+		})
+	}
+
+	return
+}
+
+func (conn *Database) SetCacheData(mediaId string, contentLength uint64, cachePath string) (err error) {
+	_, err = conn.db.Exec("UPDATE media SET content_length=$2, cache_path=$3, updated_at=CURRENT_TIMESTAMP WHERE media_id=$1", mediaId, contentLength, cachePath)
+	return
+}

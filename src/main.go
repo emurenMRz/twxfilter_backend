@@ -3,23 +3,29 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 
 	"mediadata"
 )
 
-func main() {
-	daemonMode := false
-	flag.BoolVar(&daemonMode, "d", false, "Standby in daemon mode")
+var daemonMode bool
+var cacheDir string
 
+func init() {
+	flag.BoolVar(&daemonMode, "d", false, "Standby in daemon mode")
+	flag.StringVar(&cacheDir, "c", ".cache", "Set cache-dir and start caching media")
+}
+
+func main() {
 	flag.Parse()
-	if len(flag.Args()) == 0 {
-		daemonMode = true
-	} else {
-		flag.Usage()
+
+	if len(cacheDir) > 0 {
+		log.Println("Start caching media...: " + cacheDir)
+		cache(cacheDir)
 		return
 	}
 
-	if daemonMode {
+	if daemonMode || len(flag.Args()) == 0 {
 		log.Println("Start daemon...")
 		daemon()
 		return
@@ -27,13 +33,19 @@ func main() {
 
 	inputFile := flag.Arg(0)
 
+	_, err := os.Stat(inputFile)
+	if err != nil {
+		flag.Usage()
+		return
+	}
+
 	media, err := mediadata.ParseMediaDataFromFile(inputFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, m := range media {
-		err = m.DownloadMedia()
+		_, err = m.DownloadMedia("")
 		if err != nil {
 			log.Println(err)
 		}
