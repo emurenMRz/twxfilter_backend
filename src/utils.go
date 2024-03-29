@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -21,7 +23,12 @@ func ReadConnectConfig(confName string) (cc ConnectConfig, err error) {
 }
 
 func GetConnection() (conn *Database, err error) {
-	connectConfig, err := ReadConnectConfig("connect.json")
+	exe, err := os.Executable()
+	if err != nil {
+		return
+	}
+
+	connectConfig, err := ReadConnectConfig(path.Join(filepath.Dir(exe), "connect.json"))
 	if err != nil {
 		return
 	}
