@@ -21,13 +21,19 @@ func main() {
 
 	if len(cacheDir) > 0 {
 		log.Println("Start caching media...: " + cacheDir)
-		cache(cacheDir)
+		err := cache(cacheDir)
+		if err != nil {
+			log.Fatal(err)
+		}
 		return
 	}
 
 	if daemonMode || len(flag.Args()) == 0 {
 		log.Println("Start daemon...")
-		daemon()
+		err := daemon()
+		if err != nil {
+			log.Fatal(err)
+		}
 		return
 	}
 

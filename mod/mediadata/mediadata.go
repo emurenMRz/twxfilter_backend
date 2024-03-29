@@ -33,19 +33,15 @@ type CacheData struct {
 func (m *MediaData) DownloadMedia(baseDir string) (cacheData CacheData, err error) {
 	if m.Type == "video" {
 		cacheData, err = DownloadFile(baseDir, m.VideoUrl)
-		if err != nil {
-			log.Println(err)
-		}
-	} else {
-		imageUri, err := normalizeImageUrl(m.Url)
-		if err != nil {
-			log.Println(err)
-		}
-		cacheData, err = DownloadFile(baseDir, imageUri)
-		if err != nil {
-			log.Println(err)
-		}
+		return
 	}
+
+	imageUri, err := normalizeImageUrl(m.Url)
+	if err != nil {
+		return
+	}
+
+	cacheData, err = DownloadFile(baseDir, imageUri)
 	return
 }
 

@@ -10,16 +10,16 @@ import (
 	"time"
 )
 
-func cache(cacheDir string) {
+func cache(cacheDir string) (err error) {
 	conn, err := GetConnection()
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	defer conn.Close()
 
 	mediaList, err := conn.GetNoCacheMedia()
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 
 	lines := []mediadata.MediaData{}
@@ -36,13 +36,9 @@ func cache(cacheDir string) {
 		lines = append(lines, m)
 	}
 
-	year, month, day := time.Now().Date()
-	baseDir := path.Join(cacheDir, fmt.Sprintf("%04d%02d%02d", year, int(month), day))
-	err = os.MkdirAll(baseDir, os.ModePerm)
+	baseDir, err := makeBaseDir(cacheDir)
 	if err != nil {
-		if !os.IsExist(err) {
-			log.Fatal(err)
-		}
+		return
 	}
 
 	for _, m := range lines {
@@ -53,4 +49,28 @@ func cache(cacheDir string) {
 		}
 		conn.SetCacheData(m.Id, cacheData.ContentLength, cacheData.CachePath)
 	}
+
+	return
+}
+
+
+func makeBaseDir(cacheDir string) (baseDir string, err error) {
+	if cacheDir == "" {
+		cacheDir, err = ExecPath(".cache")
+		if err != nil {
+			return
+		}
+	}
+
+	year, month, day := time.Now().Date()
+	baseDir = path.Join(cacheDir, fmt.Sprintf("%04d%02d%02d", year, int(month), day))
+	err = os.MkdirAll(baseDir, os.ModePerm)
+	if err != nil {
+		if !os.IsExist(err) {
+			return
+		}
+		err = nil
+	}
+
+	return
 }

@@ -12,10 +12,10 @@ import (
 	"router"
 )
 
-func daemon() {
+func daemon() (err error) {
 	conn, err := GetConnection()
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	defer conn.Close()
 
@@ -144,4 +144,5 @@ func daemon() {
 	})
 
 	cgi.Serve(router.Router)
+	return
 }

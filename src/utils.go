@@ -23,12 +23,12 @@ func ReadConnectConfig(confName string) (cc ConnectConfig, err error) {
 }
 
 func GetConnection() (conn *Database, err error) {
-	exe, err := os.Executable()
+	execPath, err := ExecPath("connect.json")
 	if err != nil {
 		return
 	}
 
-	connectConfig, err := ReadConnectConfig(path.Join(filepath.Dir(exe), "connect.json"))
+	connectConfig, err := ReadConnectConfig(execPath)
 	if err != nil {
 		return
 	}
@@ -44,4 +44,14 @@ func GetConnection() (conn *Database, err error) {
 func GetSelfName() string {
 	t := strings.Split(os.Args[0], "/")
 	return t[len(t)-1]
+}
+
+func ExecPath(filename string) (execPath string, err error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return
+	}
+
+	execPath = path.Join(filepath.Dir(exe), filename)
+	return
 }
