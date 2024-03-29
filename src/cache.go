@@ -53,6 +53,35 @@ func cache(cacheDir string) (err error) {
 	return
 }
 
+func cacheFromFile(cacheDir string, fromFile string) (err error) {
+	if fromFile == "" {
+		fromFile = "twfilter-all-data.json"
+	}
+
+	_, err = os.Stat(fromFile)
+	if err != nil {
+		return
+	}
+
+	media, err := mediadata.ParseMediaDataFromFile(fromFile)
+	if err != nil {
+		return
+	}
+
+	baseDir, err := makeBaseDir(cacheDir)
+	if err != nil {
+		return
+	}
+
+	for _, m := range media {
+		_, err = m.DownloadMedia(baseDir)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
+	return
+}
 
 func makeBaseDir(cacheDir string) (baseDir string, err error) {
 	if cacheDir == "" {

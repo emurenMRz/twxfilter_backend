@@ -3,57 +3,47 @@ package main
 import (
 	"flag"
 	"log"
-	"os"
-
-	"mediadata"
 )
 
-var daemonMode bool
+var fromFile string
 var cacheDir string
+var cachingMode bool
 
 func init() {
-	flag.BoolVar(&daemonMode, "d", false, "Standby in daemon mode")
-	flag.StringVar(&cacheDir, "c", ".cache", "Set cache-dir and start caching media")
+	flag.StringVar(&fromFile, "f", "", "Start caching media from an export file")
+	flag.StringVar(&cacheDir, "c", "", "Set cache-dir and start caching media")
+	flag.BoolVar(&cachingMode, "caching", false, "Start caching media with default cache dir")
 }
 
 func main() {
 	flag.Parse()
 
-	if len(cacheDir) > 0 {
-		log.Println("Start caching media...: " + cacheDir)
-		err := cache(cacheDir)
-		if err != nil {
-			log.Fatal(err)
+	if flag.NFlag() > 0 {
+		if len(fromFile) > 0 {
+			log.Println("Start caching media from file...: " + cacheDir)
+			err := cacheFromFile(cacheDir, fromFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
 		}
-		return
-	}
 
-	if daemonMode || len(flag.Args()) == 0 {
-		log.Println("Start daemon...")
-		err := daemon()
-		if err != nil {
-			log.Fatal(err)
+		if cachingMode || len(cacheDir) > 0 {
+			log.Println("Start caching media...: " + cacheDir)
+			err := cache(cacheDir)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
 		}
-		return
-	}
 
-	inputFile := flag.Arg(0)
-
-	_, err := os.Stat(inputFile)
-	if err != nil {
 		flag.Usage()
 		return
 	}
 
-	media, err := mediadata.ParseMediaDataFromFile(inputFile)
+	log.Println("Start daemon...")
+	err := daemon()
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	for _, m := range media {
-		_, err = m.DownloadMedia("")
-		if err != nil {
-			log.Println(err)
-		}
 	}
 }
