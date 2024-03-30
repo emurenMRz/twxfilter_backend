@@ -11,6 +11,12 @@ import (
 )
 
 func cache(cacheDir string) (err error) {
+	runData, err := RunDaemon("caching.pid")
+	if err != nil {
+		return
+	}
+	defer runData.Close()
+
 	conn, err := GetConnection()
 	if err != nil {
 		return
@@ -54,6 +60,12 @@ func cache(cacheDir string) (err error) {
 }
 
 func cacheFromFile(cacheDir string, fromFile string) (err error) {
+	runData, err := RunDaemon("caching.pid")
+	if err != nil {
+		return
+	}
+	defer runData.Close()
+
 	if fromFile == "" {
 		fromFile = "twfilter-all-data.json"
 	}
