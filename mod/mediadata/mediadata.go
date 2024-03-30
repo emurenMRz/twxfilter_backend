@@ -106,8 +106,17 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 	defer res.Body.Close()
 
 	contentTypes := res.Header.Values("Content-Type")
-	contentLengths := res.Header.Values("Content-Length")
+	if len(contentTypes) == 0 {
+		err = fmt.Errorf("no Content-type is obtained")
+		return
+	}
 	log.Println("Content-Type: " + strings.Join(contentTypes, "; "))
+
+	contentLengths := res.Header.Values("Content-Length")
+	if len(contentLengths) == 0 {
+		err = fmt.Errorf("no Content-length is obtained")
+		return
+	}
 	log.Println("Content-Length: " + strings.Join(contentLengths, "; "))
 
 	size, err := strconv.ParseUint(contentLengths[0], 10, 64)
