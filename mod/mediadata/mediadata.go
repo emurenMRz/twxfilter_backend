@@ -31,7 +31,7 @@ type CacheData struct {
 }
 
 func (m *MediaData) DownloadMedia(baseDir string) (cacheData CacheData, err error) {
-	if m.Type == "video" {
+	if m.Type == "video" || m.Type == "animated_gif" {
 		cacheData, err = DownloadFile(baseDir, m.VideoUrl)
 		return
 	}
