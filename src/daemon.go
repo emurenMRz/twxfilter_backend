@@ -62,13 +62,15 @@ func daemon() (err error) {
 			valueTable = append(valueTable, row)
 		}
 
-		err = conn.UpsertMedia(columns, valueTable)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
-			return
+		if len(valueTable) > 0 {
+			err = conn.UpsertMedia(columns, valueTable)
+			if err != nil {
+				log.Println(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				fmt.Fprint(w, err)
+				return
+			}
 		}
 
 		mediaList, err := conn.GetMedia()
