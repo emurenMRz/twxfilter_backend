@@ -125,7 +125,7 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 			WHERE
 				removed='f'
 			ORDER BY
-				media_id
+				timestamp DESC
 			`
 	rows, err := conn.db.Query(query)
 	if err != nil {
