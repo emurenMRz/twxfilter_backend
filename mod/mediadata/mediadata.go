@@ -124,6 +124,13 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 		return
 	}
 
+	if size == 0 {
+		cacheData.ContentLength = size
+
+		log.Println("Not cached: content-length is zero")
+		return
+	}
+
 	outputPath := path.Join(baseDir, filename)
 
 	log.Println("Output: " + outputPath)
@@ -146,6 +153,6 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 	cacheData.ContentLength = size
 	cacheData.CachePath = outputPath
 
-	log.Printf("Complete")
+	log.Println("Complete")
 	return
 }
