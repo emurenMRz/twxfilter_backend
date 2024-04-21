@@ -105,6 +105,8 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 	}
 	defer res.Body.Close()
 
+	log.Println("Status code: " + strconv.Itoa(res.StatusCode))
+
 	contentTypes := res.Header.Values("Content-Type")
 	if len(contentTypes) == 0 {
 		err = fmt.Errorf("no Content-type is obtained")
@@ -119,14 +121,17 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 	}
 	log.Println("Content-Length: " + strings.Join(contentLengths, "; "))
 
+	if strings.HasPrefix(contentTypes[0], "text/") {
+		log.Println("Not cached: unsupport content-type")
+		return
+	}
+
 	size, err := strconv.ParseUint(contentLengths[0], 10, 64)
 	if err != nil {
 		return
 	}
 
 	if size == 0 {
-		cacheData.ContentLength = size
-
 		log.Println("Not cached: content-length is zero")
 		return
 	}
