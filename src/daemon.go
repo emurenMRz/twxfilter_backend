@@ -90,6 +90,7 @@ func daemon() (err error) {
 				Type:      media["type"].(string),
 				Url:       media["url"].(string),
 				Timestamp: media["timestamp"].(uint64),
+				HasCache:  media["hasCache"].(bool),
 			}
 			durationMillis := media["durationMillis"].(sql.NullInt32)
 			if durationMillis.Valid {

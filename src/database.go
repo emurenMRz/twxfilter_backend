@@ -119,7 +119,8 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 				url,
 				timestamp,
 				duration_millis,
-				video_url
+				video_url,
+				content_length
 			FROM
 				media
 			WHERE
@@ -141,7 +142,8 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 		var timestamp uint64
 		var durationMillis sql.NullInt32
 		var videoUrl sql.NullString
-		err = rows.Scan(&mediaId, &parentUrl, &mediaType, &url, &timestamp, &durationMillis, &videoUrl)
+		var contentLength sql.NullInt64
+		err = rows.Scan(&mediaId, &parentUrl, &mediaType, &url, &timestamp, &durationMillis, &videoUrl, &contentLength)
 		if err != nil {
 			return
 		}
@@ -153,6 +155,7 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 			"timestamp":      timestamp,
 			"durationMillis": durationMillis,
 			"videoUrl":       videoUrl,
+			"hasCache":       contentLength.Valid && contentLength.Int64 > 0,
 		})
 	}
 

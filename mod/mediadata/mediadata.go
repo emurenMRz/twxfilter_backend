@@ -21,6 +21,7 @@ type MediaData struct {
 	Url            string `json:"url"`
 	Timestamp      uint64 `json:"timestamp"`
 	Selected       bool   `json:"selected"`
+	HasCache       bool   `json:"hasCache"`
 	DurationMillis uint   `json:"durationMillis,omitempty"`
 	VideoUrl       string `json:"videoUrl,omitempty"`
 }
