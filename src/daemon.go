@@ -100,6 +100,10 @@ func daemon() (err error) {
 			if videoUrl.Valid {
 				m.VideoUrl = videoUrl.String
 			}
+			mediaPath := media["mediaPath"].(sql.NullString)
+			if mediaPath.Valid {
+				m.MediaPath = mediaPath.String
+			}
 			lines = append(lines, m)
 		}
 

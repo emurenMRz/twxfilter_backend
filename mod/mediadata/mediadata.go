@@ -24,6 +24,7 @@ type MediaData struct {
 	HasCache       bool   `json:"hasCache"`
 	DurationMillis uint   `json:"durationMillis,omitempty"`
 	VideoUrl       string `json:"videoUrl,omitempty"`
+	MediaPath      string `json:"mediaPath,omitempty"`
 }
 
 type CacheData struct {

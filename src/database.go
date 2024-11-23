@@ -120,7 +120,8 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 				timestamp,
 				duration_millis,
 				video_url,
-				content_length
+				content_length,
+				cache_path
 			FROM
 				media
 			WHERE
@@ -143,11 +144,20 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 		var durationMillis sql.NullInt32
 		var videoUrl sql.NullString
 		var contentLength sql.NullInt64
-		err = rows.Scan(&mediaId, &parentUrl, &mediaType, &url, &timestamp, &durationMillis, &videoUrl, &contentLength)
+		var cachePath sql.NullString
+		err = rows.Scan(&mediaId, &parentUrl, &mediaType, &url, &timestamp, &durationMillis, &videoUrl, &contentLength, &cachePath)
 		if err != nil {
 			return
 		}
-		mediaList = append(mediaList, map[string]any{
+
+		var mediaPath sql.NullString
+		if cachePath.Valid {
+			index := strings.Index(cachePath.String, ".cache")
+			mediaPath.String = cachePath.String[index:]
+			mediaPath.Valid = true
+		}
+
+		m := map[string]any{
 			"mediaId":        mediaId,
 			"parentUrl":      parentUrl,
 			"type":           mediaType,
@@ -156,7 +166,9 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 			"durationMillis": durationMillis,
 			"videoUrl":       videoUrl,
 			"hasCache":       contentLength.Valid && contentLength.Int64 > 0,
-		})
+			"mediaPath":      mediaPath,
+		}
+		mediaList = append(mediaList, m)
 	}
 
 	return
