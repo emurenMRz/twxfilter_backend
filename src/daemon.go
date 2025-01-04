@@ -21,6 +21,72 @@ func daemon() (err error) {
 
 	selfName := GetSelfName()
 
+	router.RegistorEndpoint("GET /"+selfName+"/media/:id", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
+		id := values["id"]
+
+		mediaRecord, err := conn.GetMediaByID(id)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			fmt.Fprint(w, err)
+			return
+		}
+
+		if !mediaRecord.CachePath.Valid {
+			err := "No cache"
+			log.Println()
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			fmt.Fprint(w, err)
+			return
+		}
+
+		type MediaObject struct {
+			MediaId        string `json:"id"`
+			ParentUrl      string `json:"parentUrl"`
+			Type           string `json:"type"`
+			Url            string `json:"url"`
+			Timestamp      uint64 `json:"timestamp"`
+			DurationMillis int32  `json:"durationMillis,omitempty"`
+			VideoUrl       string `json:"videoUrl,omitempty"`
+			ContentLength  int64  `json:"contentLength,omitempty"`
+			CachePath      string `json:"cachePath,omitempty"`
+			Removed        bool   `json:"removed"`
+		}
+
+		m := MediaObject{
+			MediaId:   mediaRecord.MediaId,
+			ParentUrl: mediaRecord.ParentUrl,
+			Type:      mediaRecord.Type,
+			Url:       mediaRecord.Url,
+			Timestamp: mediaRecord.Timestamp,
+			Removed:   mediaRecord.Removed,
+		}
+
+		if mediaRecord.DurationMillis.Valid {
+			m.DurationMillis = mediaRecord.DurationMillis.Int32
+		}
+		if mediaRecord.VideoUrl.Valid {
+			m.VideoUrl = mediaRecord.VideoUrl.String
+		}
+		if mediaRecord.ContentLength.Valid {
+			m.ContentLength = mediaRecord.ContentLength.Int64
+		}
+
+		o, err := json.Marshal(m)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			fmt.Fprintln(w, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		fmt.Fprint(w, string(o))
+	})
+
 	router.RegistorEndpoint("POST /"+selfName+"/media", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {

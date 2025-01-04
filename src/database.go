@@ -24,6 +24,19 @@ type Database struct {
 	db *sql.DB
 }
 
+type MediaRecord struct {
+	MediaId        string         `json:"id"`
+	ParentUrl      string         `json:"parentUrl"`
+	Type           string         `json:"type"`
+	Url            string         `json:"url"`
+	Timestamp      uint64         `json:"timestamp"`
+	DurationMillis sql.NullInt32  `json:"durationMillis,omitempty"`
+	VideoUrl       sql.NullString `json:"videoUrl,omitempty"`
+	ContentLength  sql.NullInt64  `json:"ContentLength,omitempty"`
+	CachePath      sql.NullString `json:"CachePath,omitempty"`
+	Removed        bool           `json:"Removed"`
+}
+
 func Connect(config ConnectConfig) (conn *Database, err error) {
 	conn = &Database{config, nil}
 	conn.db, err = sql.Open("postgres", "user="+conn.User+" dbname="+conn.Dbname+" sslmode=disable")
@@ -170,6 +183,41 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 		}
 		mediaList = append(mediaList, m)
 	}
+
+	return
+}
+
+func (conn *Database) GetMediaByID(id string) (mediaRecord MediaRecord, err error) {
+	query := `SELECT
+				media_id,
+				parent_url,
+				type,
+				url,
+				timestamp,
+				duration_millis,
+				video_url,
+				content_length,
+				cache_path,
+				removed
+			FROM
+				media
+			WHERE
+				media_id=$1
+			`
+	row := conn.db.QueryRow(query, id)
+
+	err = row.Scan(
+		&mediaRecord.MediaId,
+		&mediaRecord.ParentUrl,
+		&mediaRecord.Type,
+		&mediaRecord.Url,
+		&mediaRecord.Timestamp,
+		&mediaRecord.DurationMillis,
+		&mediaRecord.VideoUrl,
+		&mediaRecord.ContentLength,
+		&mediaRecord.CachePath,
+		&mediaRecord.Removed,
+	)
 
 	return
 }
