@@ -36,7 +36,7 @@ func Connect(config ConnectConfig) (conn *Database, err error) {
 				parent_url      TEXT NOT NULL,
 				type            TEXT NOT NULL,
 				url             TEXT NOT NULL,
-				timestamp       NUMERIC NOT NULL,
+				timestamp       NUMERIC NOT NULL DEFAULT (EXTRACT(epoch FROM now()) * 1000::numeric)::bigint::numeric,
 				duration_millis NUMERIC,
 				video_url       TEXT,
 
