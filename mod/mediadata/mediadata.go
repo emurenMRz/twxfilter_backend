@@ -87,7 +87,7 @@ func normalizeImageUrl(mediaUrl string) (imageUrl string, err error) {
 	}
 	ext := m["extension"]
 	filename := m["filename"] + "." + ext
-	imageUrl = "https://pbs.twimg.com/media/" + filename + "?format=" + ext + "&name=orig"
+	imageUrl = "https://pbs.twimg.com/media/" + filename + "?name=orig"
 	return
 }
 
