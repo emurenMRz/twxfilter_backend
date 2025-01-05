@@ -8,11 +8,13 @@ import (
 var fromFile string
 var cacheDir string
 var cachingMode bool
+var makeThumbnailMode bool
 
 func init() {
 	flag.StringVar(&fromFile, "f", "", "Start caching media from an export file")
 	flag.StringVar(&cacheDir, "c", "", "Set cache-dir and start caching media")
 	flag.BoolVar(&cachingMode, "caching", false, "Start caching media with default cache dir")
+	flag.BoolVar(&makeThumbnailMode, "make-thumbnails", false, "Start creating thumbnails for video media")
 }
 
 func main() {
@@ -31,6 +33,15 @@ func main() {
 		if cachingMode || len(cacheDir) > 0 {
 			log.Println("Start caching media...: " + cacheDir)
 			err := cache(cacheDir)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+
+		if makeThumbnailMode || len(cacheDir) > 0 {
+			log.Println("Start creating video thumbnails...: " + cacheDir)
+			err := createThumbnails(cacheDir)
 			if err != nil {
 				log.Fatal(err)
 			}

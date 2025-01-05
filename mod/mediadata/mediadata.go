@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,6 +27,7 @@ type MediaData struct {
 	DurationMillis uint   `json:"durationMillis,omitempty"`
 	VideoUrl       string `json:"videoUrl,omitempty"`
 	MediaPath      string `json:"mediaPath,omitempty"`
+	ThumbPath      string `json:"thumbPath,omitempty"`
 }
 
 type CacheData struct {
@@ -35,6 +38,15 @@ type CacheData struct {
 func (m *MediaData) DownloadMedia(baseDir string) (cacheData CacheData, err error) {
 	if m.Type == "video" || m.Type == "animated_gif" {
 		cacheData, err = DownloadFile(baseDir, m.VideoUrl)
+		if err != nil {
+			return
+		}
+
+		_, err = MakeThumbnail(cacheData.CachePath, 0)
+		if err != nil {
+			return CacheData{}, err
+		}
+
 		return
 	}
 
@@ -162,4 +174,28 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 
 	log.Println("Complete")
 	return
+}
+
+func MakeThumbnail(videoPath string, thumbnailWidth uint) (thumbnailPath string, err error) {
+	if thumbnailWidth == 0 {
+		thumbnailWidth = 160
+	}
+
+	ext := filepath.Ext(videoPath)
+	outputPath := strings.TrimSuffix(videoPath, ext) + "_thumb.jpg"
+
+	if _, err = os.Stat(outputPath); err == nil {
+		return outputPath, nil
+	} else if !os.IsNotExist(err) {
+		return
+	}
+
+	vf := fmt.Sprintf("thumbnail,scale=%d:-1", thumbnailWidth)
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "quiet", "-i", videoPath, "-vf", vf, "-frames:v", "1", "-update", "1", "-y", outputPath)
+
+	if err = cmd.Run(); err != nil {
+		return
+	}
+
+	return outputPath, nil
 }

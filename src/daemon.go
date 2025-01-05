@@ -170,6 +170,10 @@ func daemon() (err error) {
 			if mediaPath.Valid {
 				m.MediaPath = mediaPath.String
 			}
+			thumbPath := media["thumbPath"].(sql.NullString)
+			if thumbPath.Valid {
+				m.ThumbPath = thumbPath.String
+			}
 			lines = append(lines, m)
 		}
 

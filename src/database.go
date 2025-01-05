@@ -164,10 +164,18 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 		}
 
 		var mediaPath sql.NullString
+		var thumbPath sql.NullString
 		if cachePath.Valid {
 			index := strings.Index(cachePath.String, ".cache")
-			mediaPath.String = cachePath.String[index:]
+			relativePath := cachePath.String[index:]
+			mediaPath.String = relativePath
 			mediaPath.Valid = true
+			thumbPath.String = relativePath
+			thumbPath.Valid = true
+			if mediaType != "photo" {
+				ext := strings.LastIndex(thumbPath.String, ".")
+				thumbPath.String = thumbPath.String[:ext] + "_thumb.jpg"
+			}
 		}
 
 		m := map[string]any{
@@ -180,6 +188,7 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 			"videoUrl":       videoUrl,
 			"hasCache":       contentLength.Valid && contentLength.Int64 > 0,
 			"mediaPath":      mediaPath,
+			"thumbPath":      thumbPath,
 		}
 		mediaList = append(mediaList, m)
 	}
@@ -266,6 +275,36 @@ func (conn *Database) GetNoCacheMedia() (mediaList []map[string]any, err error) 
 			"url":      url,
 			"videoUrl": videoUrl,
 		})
+	}
+
+	return
+}
+
+func (conn *Database) GetCachedVideoMedia() (cachePathList []string, err error) {
+	query := `SELECT
+				cache_path
+			FROM
+				media
+			WHERE
+				type='video' AND removed='f' AND content_length IS NOT NULL
+			ORDER BY
+				timestamp DESC
+			`
+	rows, err := conn.db.Query(query)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cachePath sql.NullString
+		err = rows.Scan(&cachePath)
+		if err != nil {
+			return
+		}
+		if cachePath.Valid {
+			cachePathList = append(cachePathList, cachePath.String)
+		}
 	}
 
 	return

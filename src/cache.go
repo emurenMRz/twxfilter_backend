@@ -95,6 +95,46 @@ func cacheFromFile(cacheDir string, fromFile string) (err error) {
 	return
 }
 
+func createThumbnails(cacheDir string) (err error) {
+	runData, err := RunDaemon("caching.pid")
+	if err != nil {
+		return
+	}
+	defer runData.Close()
+
+	conn, err := GetConnection()
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	cachePathList, err := conn.GetCachedVideoMedia()
+	if err != nil {
+		return
+	}
+
+	if len(cachePathList) == 0 {
+		err = fmt.Errorf("no cached video media")
+		return
+	}
+
+	_, err = makeBaseDir(cacheDir)
+	if err != nil {
+		return
+	}
+
+	for _, cachePath := range cachePathList {
+		thumbnailPath, err := mediadata.MakeThumbnail(cachePath, 0)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		log.Println("Thumbnail created: " + thumbnailPath)
+	}
+
+	return
+}
+
 func makeBaseDir(cacheDir string) (baseDir string, err error) {
 	if cacheDir == "" {
 		cacheDir, err = ExecPath(".cache")
