@@ -204,6 +204,20 @@ func daemon() (err error) {
 		fmt.Fprint(w, "Succeed")
 	})
 
+	router.RegistorEndpoint("DELETE /"+selfName+"/media/cached", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
+		err := conn.DeleteMediaCached()
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			fmt.Fprint(w, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		fmt.Fprint(w, "Succeed")
+	})
+
 	router.RegistorEndpoint("DELETE /"+selfName+"/media/:id", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		id := values["id"]
 

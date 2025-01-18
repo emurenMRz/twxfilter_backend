@@ -236,6 +236,11 @@ func (conn *Database) DeleteMediaAll() (err error) {
 	return
 }
 
+func (conn *Database) DeleteMediaCached() (err error) {
+	_, err = conn.db.Exec("UPDATE media SET removed='t', updated_at=CURRENT_TIMESTAMP WHERE removed='f' AND content_length IS NOT NULL")
+	return
+}
+
 func (conn *Database) DeleteMedia(id string) (err error) {
 	_, err = conn.db.Exec("UPDATE media SET removed='t', updated_at=CURRENT_TIMESTAMP WHERE removed='f' AND media_id=$1", id)
 	return
