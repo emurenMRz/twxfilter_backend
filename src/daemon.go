@@ -200,7 +200,7 @@ func daemon() (err error) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprint(w, "Succeed")
 	})
 
@@ -214,7 +214,7 @@ func daemon() (err error) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprint(w, "Succeed")
 	})
 
@@ -230,7 +230,7 @@ func daemon() (err error) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprint(w, "Succeed")
 	})
 
