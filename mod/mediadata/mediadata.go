@@ -1,6 +1,7 @@
 package mediadata
 
 import (
+	"diffhash"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,30 +33,41 @@ type MediaData struct {
 
 type CacheData struct {
 	ContentLength uint64
+	ContentHash   uint64
 	CachePath     string
 }
 
 func (m *MediaData) DownloadMedia(baseDir string) (cacheData CacheData, err error) {
+	var thumbnailPath string
+
 	if m.Type == "video" || m.Type == "animated_gif" {
 		cacheData, err = DownloadFile(baseDir, m.VideoUrl)
 		if err != nil {
 			return
 		}
 
-		_, err = MakeThumbnail(cacheData.CachePath, 0)
+		thumbnailPath, err = MakeThumbnail(cacheData.CachePath, 0)
 		if err != nil {
-			return CacheData{}, err
+			return
+		}
+	} else {
+		var imageUri string
+
+		imageUri, err = normalizeImageUrl(m.Url)
+		if err != nil {
+			return
 		}
 
-		return
+		cacheData, err = DownloadFile(baseDir, imageUri)
+		if err != nil {
+			return
+		}
+
+		thumbnailPath = cacheData.CachePath
 	}
 
-	imageUri, err := normalizeImageUrl(m.Url)
-	if err != nil {
-		return
-	}
+	cacheData.ContentHash = diffhash.CalcDiffHashFromFile(thumbnailPath)
 
-	cacheData, err = DownloadFile(baseDir, imageUri)
 	return
 }
 
