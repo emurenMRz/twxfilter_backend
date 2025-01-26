@@ -33,6 +33,7 @@ type MediaRecord struct {
 	DurationMillis sql.NullInt32  `json:"durationMillis,omitempty"`
 	VideoUrl       sql.NullString `json:"videoUrl,omitempty"`
 	ContentLength  sql.NullInt64  `json:"ContentLength,omitempty"`
+	ContentHash    sql.NullInt64  `json:"ContentHash,omitempty"`
 	CachePath      sql.NullString `json:"CachePath,omitempty"`
 	Removed        bool           `json:"Removed"`
 }
@@ -54,6 +55,7 @@ func Connect(config ConnectConfig) (conn *Database, err error) {
 				video_url       TEXT,
 
 				content_length  BIGINT,
+				content_hash    BIGINT,
 				cache_path      TEXT,
 
 				removed         BOOLEAN NOT NULL DEFAULT FALSE,
@@ -206,6 +208,7 @@ func (conn *Database) GetMediaByID(id string) (mediaRecord MediaRecord, err erro
 				duration_millis,
 				video_url,
 				content_length,
+				content_hash,
 				cache_path,
 				removed
 			FROM
@@ -224,9 +227,59 @@ func (conn *Database) GetMediaByID(id string) (mediaRecord MediaRecord, err erro
 		&mediaRecord.DurationMillis,
 		&mediaRecord.VideoUrl,
 		&mediaRecord.ContentLength,
+		&mediaRecord.ContentHash,
 		&mediaRecord.CachePath,
 		&mediaRecord.Removed,
 	)
+
+	return
+}
+
+func (conn *Database) GetMediaByContentHash(contentHash uint64) (mediaRecordList []MediaRecord, err error) {
+	query := `SELECT
+				media_id,
+				parent_url,
+				type,
+				url,
+				timestamp,
+				duration_millis,
+				video_url,
+				content_length,
+				content_hash,
+				cache_path,
+				removed
+			FROM
+				media
+			WHERE
+				content_hash=$1
+			`
+	rows, err := conn.db.Query(query, contentHash)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mediaRecord MediaRecord
+		err = rows.Scan(
+			&mediaRecord.MediaId,
+			&mediaRecord.ParentUrl,
+			&mediaRecord.Type,
+			&mediaRecord.Url,
+			&mediaRecord.Timestamp,
+			&mediaRecord.DurationMillis,
+			&mediaRecord.VideoUrl,
+			&mediaRecord.ContentLength,
+			&mediaRecord.ContentHash,
+			&mediaRecord.CachePath,
+			&mediaRecord.Removed,
+		)
+		if err != nil {
+			return
+		}
+
+		mediaRecordList = append(mediaRecordList, mediaRecord)
+	}
 
 	return
 }
@@ -315,7 +368,146 @@ func (conn *Database) GetCachedVideoMedia() (cachePathList []string, err error) 
 	return
 }
 
-func (conn *Database) SetCacheData(mediaId string, contentLength uint64, cachePath string) (err error) {
-	_, err = conn.db.Exec("UPDATE media SET content_length=$2, cache_path=$3, updated_at=CURRENT_TIMESTAMP WHERE media_id=$1", mediaId, contentLength, cachePath)
+type UnhashedMedia struct {
+	MediaId       string
+	ThumbnailPath string
+}
+
+func (conn *Database) GetUnhashedMedia() (unhashedMediaList []UnhashedMedia, err error) {
+	query := `SELECT
+				media_id,
+				type,
+				cache_path
+			FROM
+				media
+			WHERE
+				content_length > 0 AND content_hash IS NULL AND cache_path IS NOT NULL
+			`
+	rows, err := conn.db.Query(query)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mediaId string
+		var mediaType string
+		var cachePath string
+		err = rows.Scan(&mediaId, &mediaType, &cachePath)
+		if err != nil {
+			return
+		}
+
+		if mediaType != "photo" {
+			ext := strings.LastIndex(cachePath, ".")
+			cachePath = cachePath[:ext] + "_thumb.jpg"
+		}
+
+		unhashedMediaList = append(unhashedMediaList, UnhashedMedia{
+			MediaId:       mediaId,
+			ThumbnailPath: cachePath,
+		})
+	}
+
+	return
+}
+
+type DuplicatedHash struct {
+	ContentHash uint64
+	Count       int
+}
+
+func (conn *Database) GetDuplicatedHash() (duplicatedHashList []DuplicatedHash, err error) {
+	query := `SELECT
+				content_hash,
+				COUNT(*)
+			FROM
+				media
+			WHERE
+				content_hash > 0
+			GROUP BY
+				content_hash
+			HAVING
+				COUNT(*) >= 2
+			`
+	rows, err := conn.db.Query(query)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var contentHash uint64
+		var count int
+		err = rows.Scan(&contentHash, &count)
+		if err != nil {
+			return
+		}
+
+		duplicatedHashList = append(duplicatedHashList, DuplicatedHash{
+			ContentHash: contentHash,
+			Count:       count,
+		})
+	}
+
+	return
+}
+
+func (conn *Database) GetDuplicatedMedia() (duplicatedMediaList [][]map[string]any, err error) {
+	duplicatedHashList, err := conn.GetDuplicatedHash()
+	if err != nil {
+		return
+	}
+
+	for _, duplicatedHash := range duplicatedHashList {
+		mediaRecordList, err := conn.GetMediaByContentHash(duplicatedHash.ContentHash)
+		if err != nil {
+			return nil, err
+		}
+
+		duplicatedMediaSet := []map[string]any{}
+		for _, mediaRecord := range mediaRecordList {
+			var mediaPath sql.NullString
+			var thumbPath sql.NullString
+			if mediaRecord.CachePath.Valid {
+				index := strings.Index(mediaRecord.CachePath.String, ".cache")
+				relativePath := mediaRecord.CachePath.String[index:]
+				mediaPath.String = relativePath
+				mediaPath.Valid = true
+				thumbPath.String = relativePath
+				thumbPath.Valid = true
+				if mediaRecord.Type != "photo" {
+					ext := strings.LastIndex(thumbPath.String, ".")
+					thumbPath.String = thumbPath.String[:ext] + "_thumb.jpg"
+				}
+			}
+
+			duplicatedMediaSet = append(duplicatedMediaSet, map[string]any{
+				"mediaId":        mediaRecord.MediaId,
+				"parentUrl":      mediaRecord.ParentUrl,
+				"type":           mediaRecord.Type,
+				"url":            mediaRecord.Url,
+				"timestamp":      mediaRecord.Timestamp,
+				"durationMillis": mediaRecord.DurationMillis,
+				"videoUrl":       mediaRecord.VideoUrl,
+				"hasCache":       mediaRecord.ContentLength.Valid && mediaRecord.ContentLength.Int64 > 0,
+				"mediaPath":      mediaPath,
+				"thumbPath":      thumbPath,
+			})
+		}
+
+		duplicatedMediaList = append(duplicatedMediaList, duplicatedMediaSet)
+	}
+
+	return
+}
+
+func (conn *Database) SetCacheData(mediaId string, contentLength uint64, contentHash uint64, cachePath string) (err error) {
+	_, err = conn.db.Exec("UPDATE media SET content_length=$2, content_hash=$3, cache_path=$4, updated_at=CURRENT_TIMESTAMP WHERE media_id=$1", mediaId, contentLength, contentHash, cachePath)
+	return
+}
+
+func (conn *Database) SetContentHashData(mediaId string, contentHash uint64) (err error) {
+	_, err = conn.db.Exec("UPDATE media SET content_hash=$2, updated_at=CURRENT_TIMESTAMP WHERE media_id=$1", mediaId, contentHash)
 	return
 }

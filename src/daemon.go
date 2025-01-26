@@ -21,6 +21,58 @@ func daemon() (err error) {
 
 	selfName := GetSelfName()
 
+	router.RegistorEndpoint("GET /"+selfName+"/media/duplicated", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
+		duplicatedMediaList, err := conn.GetDuplicatedMedia()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		nodeRoot := [][]mediadata.MediaData{}
+		for _, mediaSet := range duplicatedMediaList {
+			set := []mediadata.MediaData{}
+			for _, media := range mediaSet {
+				m := mediadata.MediaData{
+					Id:        media["mediaId"].(string),
+					ParentUrl: media["parentUrl"].(string),
+					Type:      media["type"].(string),
+					Url:       media["url"].(string),
+					Timestamp: media["timestamp"].(uint64),
+					HasCache:  media["hasCache"].(bool),
+				}
+				durationMillis := media["durationMillis"].(sql.NullInt32)
+				if durationMillis.Valid {
+					m.DurationMillis = uint(durationMillis.Int32)
+				}
+				videoUrl := media["videoUrl"].(sql.NullString)
+				if videoUrl.Valid {
+					m.VideoUrl = videoUrl.String
+				}
+				mediaPath := media["mediaPath"].(sql.NullString)
+				if mediaPath.Valid {
+					m.MediaPath = mediaPath.String
+				}
+				thumbPath := media["thumbPath"].(sql.NullString)
+				if thumbPath.Valid {
+					m.ThumbPath = thumbPath.String
+				}
+				set = append(set, m)
+			}
+			nodeRoot = append(nodeRoot, set)
+		}
+
+		o, err := json.Marshal(nodeRoot)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		fmt.Fprint(w, string(o))
+	})
+
 	router.RegistorEndpoint("GET /"+selfName+"/media/:id", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		id := values["id"]
 
@@ -35,7 +87,7 @@ func daemon() (err error) {
 
 		if !mediaRecord.CachePath.Valid {
 			err := "No cache"
-			log.Println()
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			fmt.Fprint(w, err)

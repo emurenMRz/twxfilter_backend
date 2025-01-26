@@ -9,12 +9,14 @@ var fromFile string
 var cacheDir string
 var cachingMode bool
 var makeThumbnailMode bool
+var calcDiffHashMode bool
 
 func init() {
 	flag.StringVar(&fromFile, "f", "", "Start caching media from an export file")
 	flag.StringVar(&cacheDir, "c", "", "Set cache-dir and start caching media")
 	flag.BoolVar(&cachingMode, "caching", false, "Start caching media with default cache dir")
 	flag.BoolVar(&makeThumbnailMode, "make-thumbnails", false, "Start creating thumbnails for video media")
+	flag.BoolVar(&calcDiffHashMode, "calc-diffhash", false, "Starts calculating the media difference hash")
 }
 
 func main() {
@@ -42,6 +44,15 @@ func main() {
 		if makeThumbnailMode || len(cacheDir) > 0 {
 			log.Println("Start creating video thumbnails...: " + cacheDir)
 			err := createThumbnails(cacheDir)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+
+		if calcDiffHashMode || len(cacheDir) > 0 {
+			log.Println("Starts calculating the media difference hash...: " + cacheDir)
+			err := calculateDiffHashs(cacheDir)
 			if err != nil {
 				log.Fatal(err)
 			}

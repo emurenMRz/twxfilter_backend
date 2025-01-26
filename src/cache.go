@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"diffhash"
 	"fmt"
 	"log"
 	"mediadata"
@@ -53,7 +54,7 @@ func cache(cacheDir string) (err error) {
 			log.Println(err)
 			continue
 		}
-		conn.SetCacheData(m.Id, cacheData.ContentLength, cacheData.CachePath)
+		conn.SetCacheData(m.Id, cacheData.ContentLength, cacheData.ContentHash, cacheData.CachePath)
 	}
 
 	return
@@ -130,6 +131,43 @@ func createThumbnails(cacheDir string) (err error) {
 			continue
 		}
 		log.Println("Thumbnail created: " + thumbnailPath)
+	}
+
+	return
+}
+
+func calculateDiffHashs(cacheDir string) (err error) {
+	runData, err := RunDaemon("caching.pid")
+	if err != nil {
+		return
+	}
+	defer runData.Close()
+
+	conn, err := GetConnection()
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	unhashedMediaList, err := conn.GetUnhashedMedia()
+	if err != nil {
+		return
+	}
+
+	if len(unhashedMediaList) == 0 {
+		err = fmt.Errorf("no cached media")
+		return
+	}
+
+	_, err = makeBaseDir(cacheDir)
+	if err != nil {
+		return
+	}
+
+	for _, unhashedMedia := range unhashedMediaList {
+		contentHash := diffhash.CalcDiffHashFromFile(unhashedMedia.ThumbnailPath)
+		log.Printf("Diff-hashed: %s %016x\n", unhashedMedia.MediaId, contentHash)
+		conn.SetContentHashData(unhashedMedia.MediaId, contentHash)
 	}
 
 	return
