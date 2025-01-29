@@ -286,6 +286,42 @@ func daemon() (err error) {
 		fmt.Fprint(w, "Succeed")
 	})
 
+	router.RegistorEndpoint("DELETE /"+selfName+"/cache-file/:id", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
+		id := values["id"]
+
+		mediaRecord, err := conn.GetMediaByID(id)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+
+		if !mediaRecord.CachePath.Valid {
+			log.Println(err)
+			http.Error(w, "No content", http.StatusNoContent)
+			return
+		}
+
+		cachePath := mediaRecord.CachePath.String
+		mediaType := mediaRecord.Type
+		err = mediadata.DeleteCacheFile(cachePath, mediaType)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Failed to delete file", http.StatusInternalServerError)
+			return
+		}
+
+		err = conn.DeleteCacheFile(id)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		fmt.Fprint(w, "Succeed")
+	})
+
 	cgi.Serve(router.Router)
 	return
 }

@@ -299,6 +299,11 @@ func (conn *Database) DeleteMedia(id string) (err error) {
 	return
 }
 
+func (conn *Database) DeleteCacheFile(id string) (err error) {
+	_, err = conn.db.Exec("UPDATE media SET content_length=0, cache_path=NULL, removed='t', updated_at=CURRENT_TIMESTAMP WHERE media_id=$1", id)
+	return
+}
+
 func (conn *Database) GetNoCacheMedia() (mediaList []map[string]any, err error) {
 	query := `SELECT
 				media_id,
@@ -424,7 +429,7 @@ func (conn *Database) GetDuplicatedHash() (duplicatedHashList []DuplicatedHash, 
 			FROM
 				media
 			WHERE
-				content_hash > 0
+				content_length > 0 AND content_hash > 0
 			GROUP BY
 				content_hash
 			HAVING
