@@ -194,5 +194,7 @@ func makeBaseDir(cacheDir string) (baseDir string, err error) {
 		err = nil
 	}
 
+	os.Chmod(baseDir, 0777)
+
 	return
 }

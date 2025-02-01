@@ -181,6 +181,11 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 		return
 	}
 
+	err = os.Chmod(outputPath, 0666)
+	if err != nil {
+		return
+	}
+
 	cacheData.ContentLength = size
 	cacheData.CachePath = outputPath
 
@@ -206,6 +211,11 @@ func MakeThumbnail(videoPath string, thumbnailWidth uint) (thumbnailPath string,
 	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "quiet", "-i", videoPath, "-vf", vf, "-frames:v", "1", "-update", "1", "-y", outputPath)
 
 	if err = cmd.Run(); err != nil {
+		return
+	}
+
+	err = os.Chmod(outputPath, 0666)
+	if err != nil {
 		return
 	}
 
