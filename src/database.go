@@ -508,7 +508,7 @@ func (conn *Database) GetDuplicatedMedia() (duplicatedMediaList [][]map[string]a
 }
 
 func (conn *Database) SetCacheData(mediaId string, contentLength uint64, contentHash uint64, cachePath string) (err error) {
-	_, err = conn.db.Exec("UPDATE media SET content_length=$2, content_hash=$3, cache_path=$4, updated_at=CURRENT_TIMESTAMP WHERE media_id=$1", mediaId, contentLength, contentHash, cachePath)
+	_, err = conn.db.Exec("UPDATE media SET content_length=$2, content_hash=$3, cache_path=$4, updated_at=CURRENT_TIMESTAMP WHERE media_id=$1", mediaId, contentLength, int64(contentHash), cachePath)
 	return
 }
 

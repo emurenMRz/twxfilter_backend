@@ -54,7 +54,10 @@ func cache(cacheDir string) (err error) {
 			log.Println(err)
 			continue
 		}
-		conn.SetCacheData(m.Id, cacheData.ContentLength, cacheData.ContentHash, cacheData.CachePath)
+		err = conn.SetCacheData(m.Id, cacheData.ContentLength, cacheData.ContentHash, cacheData.CachePath)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	return
