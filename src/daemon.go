@@ -28,47 +28,14 @@ func daemon() (err error) {
 			return
 		}
 
-		nodeRoot := [][]mediadata.MediaData{}
-		for _, mediaSet := range duplicatedMediaList {
-			set := []mediadata.MediaData{}
-			for _, media := range mediaSet {
-				m := mediadata.MediaData{
-					Id:        media["mediaId"].(string),
-					ParentUrl: media["parentUrl"].(string),
-					Type:      media["type"].(string),
-					Url:       media["url"].(string),
-					Timestamp: media["timestamp"].(uint64),
-					HasCache:  media["hasCache"].(bool),
-				}
-				durationMillis := media["durationMillis"].(sql.NullInt32)
-				if durationMillis.Valid {
-					m.DurationMillis = uint(durationMillis.Int32)
-				}
-				videoUrl := media["videoUrl"].(sql.NullString)
-				if videoUrl.Valid {
-					m.VideoUrl = videoUrl.String
-				}
-				mediaPath := media["mediaPath"].(sql.NullString)
-				if mediaPath.Valid {
-					m.MediaPath = mediaPath.String
-				}
-				thumbPath := media["thumbPath"].(sql.NullString)
-				if thumbPath.Valid {
-					m.ThumbPath = thumbPath.String
-				}
-				set = append(set, m)
-			}
-			nodeRoot = append(nodeRoot, set)
-		}
-
-		o, err := json.Marshal(nodeRoot)
+		o, err := mediaRecordSetListToJson(duplicatedMediaList)
 		if err != nil {
 			handleError(w, err)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		fmt.Fprint(w, string(o))
+		fmt.Fprint(w, o)
 	})
 
 	router.RegistorEndpoint("GET /"+selfName+"/media/:id", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
@@ -176,35 +143,7 @@ func daemon() (err error) {
 			return
 		}
 
-		lines := []mediadata.MediaData{}
-		for _, media := range mediaList {
-			m := mediadata.MediaData{
-				Id:        media["mediaId"].(string),
-				ParentUrl: media["parentUrl"].(string),
-				Type:      media["type"].(string),
-				Url:       media["url"].(string),
-				Timestamp: media["timestamp"].(uint64),
-				HasCache:  media["hasCache"].(bool),
-			}
-			durationMillis := media["durationMillis"].(sql.NullInt32)
-			if durationMillis.Valid {
-				m.DurationMillis = uint(durationMillis.Int32)
-			}
-			videoUrl := media["videoUrl"].(sql.NullString)
-			if videoUrl.Valid {
-				m.VideoUrl = videoUrl.String
-			}
-			mediaPath := media["mediaPath"].(sql.NullString)
-			if mediaPath.Valid {
-				m.MediaPath = mediaPath.String
-			}
-			thumbPath := media["thumbPath"].(sql.NullString)
-			if thumbPath.Valid {
-				m.ThumbPath = thumbPath.String
-			}
-			lines = append(lines, m)
-		}
-
+		lines := mediaRecordSet(mediaList)
 		o, err := json.Marshal(lines)
 		if err != nil {
 			handleError(w, err)
@@ -306,6 +245,51 @@ func deleteCacheFileCore(conn *Database, id string) error {
 	return nil
 }
 
+func mediaRecordSet(mediaList []map[string]any) []mediadata.MediaData {
+	set := []mediadata.MediaData{}
+	for _, media := range mediaList {
+		m := mediadata.MediaData{
+			Id:        media["mediaId"].(string),
+			ParentUrl: media["parentUrl"].(string),
+			Type:      media["type"].(string),
+			Url:       media["url"].(string),
+			Timestamp: media["timestamp"].(uint64),
+			HasCache:  media["hasCache"].(bool),
+		}
+		durationMillis := media["durationMillis"].(sql.NullInt32)
+		if durationMillis.Valid {
+			m.DurationMillis = uint(durationMillis.Int32)
+		}
+		videoUrl := media["videoUrl"].(sql.NullString)
+		if videoUrl.Valid {
+			m.VideoUrl = videoUrl.String
+		}
+		mediaPath := media["mediaPath"].(sql.NullString)
+		if mediaPath.Valid {
+			m.MediaPath = mediaPath.String
+		}
+		thumbPath := media["thumbPath"].(sql.NullString)
+		if thumbPath.Valid {
+			m.ThumbPath = thumbPath.String
+		}
+		set = append(set, m)
+	}
+	return set
+}
+
+func mediaRecordSetListToJson(duplicatedMediaList [][]map[string]any) (string, error) {
+	nodeRoot := [][]mediadata.MediaData{}
+	for _, mediaSet := range duplicatedMediaList {
+		nodeRoot = append(nodeRoot, mediaRecordSet(mediaSet))
+	}
+
+	o, err := json.Marshal(nodeRoot)
+	if err != nil {
+		return "", err
+	}
+
+	return string(o), nil
+}
 
 func DeleteCacheFile(id string) error {
 	conn, err := GetConnection()
