@@ -7,6 +7,7 @@ import (
 
 var fromFile string
 var cacheDir string
+var deleteCacheFile string
 var cachingMode bool
 var makeThumbnailMode bool
 var calcDiffHashMode bool
@@ -14,6 +15,7 @@ var calcDiffHashMode bool
 func init() {
 	flag.StringVar(&fromFile, "f", "", "Start caching media from an export file")
 	flag.StringVar(&cacheDir, "c", "", "Set cache-dir and start caching media")
+	flag.StringVar(&deleteCacheFile, "delete-cache", "", "Delete media cache files")
 	flag.BoolVar(&cachingMode, "caching", false, "Start caching media with default cache dir")
 	flag.BoolVar(&makeThumbnailMode, "make-thumbnails", false, "Start creating thumbnails for video media")
 	flag.BoolVar(&calcDiffHashMode, "calc-diffhash", false, "Starts calculating the media difference hash")
@@ -26,6 +28,14 @@ func main() {
 		if len(fromFile) > 0 {
 			log.Println("Start caching media from file...: " + cacheDir)
 			err := cacheFromFile(cacheDir, fromFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+
+		if len(deleteCacheFile) > 0 {
+			err := DeleteCacheFile(deleteCacheFile)
 			if err != nil {
 				log.Fatal(err)
 			}

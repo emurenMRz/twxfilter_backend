@@ -306,3 +306,13 @@ func deleteCacheFileCore(conn *Database, id string) error {
 	return nil
 }
 
+
+func DeleteCacheFile(id string) error {
+	conn, err := GetConnection()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	return deleteCacheFileCore(conn, id)
+}
