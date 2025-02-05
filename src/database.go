@@ -151,48 +151,23 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var mediaId string
-		var parentUrl string
-		var mediaType string
-		var url string
-		var timestamp uint64
-		var durationMillis sql.NullInt32
-		var videoUrl sql.NullString
-		var contentLength sql.NullInt64
-		var cachePath sql.NullString
-		err = rows.Scan(&mediaId, &parentUrl, &mediaType, &url, &timestamp, &durationMillis, &videoUrl, &contentLength, &cachePath)
+		var mediaRecord MediaRecord
+		err = rows.Scan(
+			&mediaRecord.MediaId,
+			&mediaRecord.ParentUrl,
+			&mediaRecord.Type,
+			&mediaRecord.Url,
+			&mediaRecord.Timestamp,
+			&mediaRecord.DurationMillis,
+			&mediaRecord.VideoUrl,
+			&mediaRecord.ContentLength,
+			&mediaRecord.CachePath,
+		)
 		if err != nil {
 			return
 		}
 
-		var mediaPath sql.NullString
-		var thumbPath sql.NullString
-		if cachePath.Valid {
-			index := strings.Index(cachePath.String, ".cache")
-			relativePath := cachePath.String[index:]
-			mediaPath.String = relativePath
-			mediaPath.Valid = true
-			thumbPath.String = relativePath
-			thumbPath.Valid = true
-			if mediaType != "photo" {
-				ext := strings.LastIndex(thumbPath.String, ".")
-				thumbPath.String = thumbPath.String[:ext] + "_thumb.jpg"
-			}
-		}
-
-		m := map[string]any{
-			"mediaId":        mediaId,
-			"parentUrl":      parentUrl,
-			"type":           mediaType,
-			"url":            url,
-			"timestamp":      timestamp,
-			"durationMillis": durationMillis,
-			"videoUrl":       videoUrl,
-			"hasCache":       contentLength.Valid && contentLength.Int64 > 0,
-			"mediaPath":      mediaPath,
-			"thumbPath":      thumbPath,
-		}
-		mediaList = append(mediaList, m)
+		mediaList = append(mediaList, mediaRecordToMap(mediaRecord))
 	}
 
 	return
@@ -470,41 +445,48 @@ func (conn *Database) GetDuplicatedMedia() (duplicatedMediaList [][]map[string]a
 			return nil, err
 		}
 
-		duplicatedMediaSet := []map[string]any{}
-		for _, mediaRecord := range mediaRecordList {
-			var mediaPath sql.NullString
-			var thumbPath sql.NullString
-			if mediaRecord.CachePath.Valid {
-				index := strings.Index(mediaRecord.CachePath.String, ".cache")
-				relativePath := mediaRecord.CachePath.String[index:]
-				mediaPath.String = relativePath
-				mediaPath.Valid = true
-				thumbPath.String = relativePath
-				thumbPath.Valid = true
-				if mediaRecord.Type != "photo" {
-					ext := strings.LastIndex(thumbPath.String, ".")
-					thumbPath.String = thumbPath.String[:ext] + "_thumb.jpg"
-				}
-			}
-
-			duplicatedMediaSet = append(duplicatedMediaSet, map[string]any{
-				"mediaId":        mediaRecord.MediaId,
-				"parentUrl":      mediaRecord.ParentUrl,
-				"type":           mediaRecord.Type,
-				"url":            mediaRecord.Url,
-				"timestamp":      mediaRecord.Timestamp,
-				"durationMillis": mediaRecord.DurationMillis,
-				"videoUrl":       mediaRecord.VideoUrl,
-				"hasCache":       mediaRecord.ContentLength.Valid && mediaRecord.ContentLength.Int64 > 0,
-				"mediaPath":      mediaPath,
-				"thumbPath":      thumbPath,
-			})
-		}
-
-		duplicatedMediaList = append(duplicatedMediaList, duplicatedMediaSet)
+		duplicatedMediaList = append(duplicatedMediaList, mediaListToSet(mediaRecordList))
 	}
 
 	return
+}
+
+func mediaRecordToMap(mediaRecord MediaRecord) map[string]any {
+	var mediaPath sql.NullString
+	var thumbPath sql.NullString
+	if mediaRecord.CachePath.Valid {
+		index := strings.Index(mediaRecord.CachePath.String, ".cache")
+		relativePath := mediaRecord.CachePath.String[index:]
+		mediaPath.String = relativePath
+		mediaPath.Valid = true
+		thumbPath.String = relativePath
+		thumbPath.Valid = true
+		if mediaRecord.Type != "photo" {
+			ext := strings.LastIndex(thumbPath.String, ".")
+			thumbPath.String = thumbPath.String[:ext] + "_thumb.jpg"
+		}
+	}
+
+	return map[string]any{
+		"mediaId":        mediaRecord.MediaId,
+		"parentUrl":      mediaRecord.ParentUrl,
+		"type":           mediaRecord.Type,
+		"url":            mediaRecord.Url,
+		"timestamp":      mediaRecord.Timestamp,
+		"durationMillis": mediaRecord.DurationMillis,
+		"videoUrl":       mediaRecord.VideoUrl,
+		"hasCache":       mediaRecord.ContentLength.Valid && mediaRecord.ContentLength.Int64 > 0,
+		"mediaPath":      mediaPath,
+		"thumbPath":      thumbPath,
+	}
+}
+
+func mediaListToSet(mediaRecordList []MediaRecord) []map[string]any {
+	duplicatedMediaSet := []map[string]any{}
+	for _, mediaRecord := range mediaRecordList {
+		duplicatedMediaSet = append(duplicatedMediaSet, mediaRecordToMap(mediaRecord))
+	}
+	return duplicatedMediaSet
 }
 
 func (conn *Database) SetCacheData(mediaId string, contentLength uint64, contentHash uint64, cachePath string) (err error) {
