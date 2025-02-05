@@ -24,8 +24,7 @@ func daemon() (err error) {
 	router.RegistorEndpoint("GET /"+selfName+"/media/duplicated", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		duplicatedMediaList, err := conn.GetDuplicatedMedia()
 		if err != nil {
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			handleError(w, err)
 			return
 		}
 
@@ -64,8 +63,7 @@ func daemon() (err error) {
 
 		o, err := json.Marshal(nodeRoot)
 		if err != nil {
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			handleError(w, err)
 			return
 		}
 
@@ -78,19 +76,12 @@ func daemon() (err error) {
 
 		mediaRecord, err := conn.GetMediaByID(id)
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
+			handleError(w, err)
 			return
 		}
 
 		if !mediaRecord.CachePath.Valid {
-			err := "No cache"
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
+			handleError(w, fmt.Errorf("no cache"))
 			return
 		}
 
@@ -128,10 +119,7 @@ func daemon() (err error) {
 
 		o, err := json.Marshal(m)
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprintln(w, err)
+			handleError(w, err)
 			return
 		}
 
@@ -142,19 +130,13 @@ func daemon() (err error) {
 	router.RegistorEndpoint("POST /"+selfName+"/media", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusBadRequest)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
+			handleError(w, err)
 			return
 		}
 
 		media, err := mediadata.ParseMediaData(body)
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
+			handleError(w, err)
 			return
 		}
 
@@ -183,20 +165,14 @@ func daemon() (err error) {
 		if len(valueTable) > 0 {
 			err = conn.UpsertMedia(columns, valueTable)
 			if err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-				fmt.Fprint(w, err)
+				handleError(w, err)
 				return
 			}
 		}
 
 		mediaList, err := conn.GetMedia()
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
+			handleError(w, err)
 			return
 		}
 
@@ -231,10 +207,7 @@ func daemon() (err error) {
 
 		o, err := json.Marshal(lines)
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprintln(w, err)
+			handleError(w, err)
 			return
 		}
 
@@ -245,10 +218,7 @@ func daemon() (err error) {
 	router.RegistorEndpoint("DELETE /"+selfName+"/media", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		err := conn.DeleteMediaAll()
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
+			handleError(w, err)
 			return
 		}
 
@@ -259,10 +229,7 @@ func daemon() (err error) {
 	router.RegistorEndpoint("DELETE /"+selfName+"/media/cached", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		err := conn.DeleteMediaCached()
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
+			handleError(w, err)
 			return
 		}
 
@@ -275,10 +242,7 @@ func daemon() (err error) {
 
 		err := conn.DeleteMedia(id)
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			fmt.Fprint(w, err)
+			handleError(w, err)
 			return
 		}
 
@@ -289,32 +253,9 @@ func daemon() (err error) {
 	router.RegistorEndpoint("DELETE /"+selfName+"/cache-file/:id", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		id := values["id"]
 
-		mediaRecord, err := conn.GetMediaByID(id)
+		err := deleteCacheFileCore(conn, id)
 		if err != nil {
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-
-		if !mediaRecord.CachePath.Valid {
-			log.Println(err)
-			http.Error(w, "No content", http.StatusNoContent)
-			return
-		}
-
-		cachePath := mediaRecord.CachePath.String
-		mediaType := mediaRecord.Type
-		err = mediadata.DeleteCacheFile(cachePath, mediaType)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Failed to delete file", http.StatusInternalServerError)
-			return
-		}
-
-		err = conn.DeleteCacheFile(id)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			handleError(w, err)
 			return
 		}
 
@@ -325,3 +266,43 @@ func daemon() (err error) {
 	cgi.Serve(router.Router)
 	return
 }
+
+func handleError(w http.ResponseWriter, err error) {
+	log.Println(err)
+
+	msg := err.Error()
+	code := http.StatusInternalServerError
+
+	if cerr, ok := err.(*DaemonError); ok {
+		msg = cerr.Text()
+		code = cerr.Code()
+	}
+
+	http.Error(w, msg, code)
+}
+
+func deleteCacheFileCore(conn *Database, id string) error {
+	mediaRecord, err := conn.GetMediaByID(id)
+	if err != nil {
+		return NewDaemonError(err, http.StatusNotFound, "")
+	}
+
+	if !mediaRecord.CachePath.Valid {
+		return NewDaemonError(nil, http.StatusNoContent, "No content")
+	}
+
+	cachePath := mediaRecord.CachePath.String
+	mediaType := mediaRecord.Type
+	err = mediadata.DeleteCacheFile(cachePath, mediaType)
+	if err != nil {
+		return NewDaemonError(err, 0, "Failed to delete file")
+	}
+
+	err = conn.DeleteCacheFile(id)
+	if err != nil {
+		return NewDaemonError(err, 0, "")
+	}
+
+	return nil
+}
+
