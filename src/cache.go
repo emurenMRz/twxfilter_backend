@@ -51,6 +51,11 @@ func cache(cacheDir string) (err error) {
 	for _, m := range lines {
 		cacheData, err := m.DownloadMedia(baseDir)
 		if err != nil {
+			if merr, ok := err.(*mediadata.MediaError); ok {
+				if merr.IsNotFound() {
+					err = conn.DeleteMedia(m.Id)
+				}
+			}
 			log.Println(err)
 			continue
 		}

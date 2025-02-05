@@ -133,22 +133,27 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 
 	log.Println("Status code: " + strconv.Itoa(res.StatusCode))
 
+	if res.StatusCode == 404 {
+		err = MediaNotFoundError("not found content")
+		return
+	}
+
 	contentTypes := res.Header.Values("Content-Type")
 	if len(contentTypes) == 0 {
-		err = fmt.Errorf("no Content-type is obtained")
+		err = MediaBadGatewayError("no Content-type is obtained")
 		return
 	}
 	log.Println("Content-Type: " + strings.Join(contentTypes, "; "))
 
 	contentLengths := res.Header.Values("Content-Length")
 	if len(contentLengths) == 0 {
-		err = fmt.Errorf("no Content-length is obtained")
+		err = MediaBadGatewayError("no Content-length is obtained")
 		return
 	}
 	log.Println("Content-Length: " + strings.Join(contentLengths, "; "))
 
 	if strings.HasPrefix(contentTypes[0], "text/") {
-		log.Println("Not cached: unsupport content-type")
+		err = MediaBadGatewayError("Not cached: unsupport content-type")
 		return
 	}
 
@@ -158,7 +163,7 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 	}
 
 	if size == 0 {
-		log.Println("Not cached: content-length is zero")
+		err = MediaNoContentError("Not cached: content-length is zero")
 		return
 	}
 
@@ -177,7 +182,7 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 	}
 
 	if uint64(writtenSize) != size {
-		err = fmt.Errorf("download error: %d/%d", writtenSize, size)
+		err = MediaInternalServerError("download error: %d/%d", writtenSize, size)
 		return
 	}
 
