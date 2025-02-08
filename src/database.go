@@ -116,9 +116,7 @@ func (conn *Database) UpsertMedia(columns []string, valueTable [][]any) (err err
 	query := fmt.Sprintf(`INSERT INTO media (%s)
 			VALUES (%s)
 			ON CONFLICT (media_id)
-			DO UPDATE SET
-				removed = EXCLUDED.removed,
-				updated_at = EXCLUDED.updated_at
+			DO NOTHING
 			`,
 		strings.Join(columns, ","),
 		strings.Join(placeholder, "),("))
