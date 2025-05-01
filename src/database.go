@@ -208,8 +208,8 @@ func (conn *Database) GetMediaByID(id string) (mediaRecord MediaRecord, err erro
 	return
 }
 
-func (conn *Database) GetMediaByContentHash(contentHash uint64) (mediaRecordList []MediaRecord, err error) {
-	query := `SELECT
+func (conn *Database) GetMediaByQuery(where string, args ...any) (mediaRecordList []MediaRecord, err error) {
+	query := fmt.Sprintf(`SELECT
 				media_id,
 				parent_url,
 				type,
@@ -224,9 +224,9 @@ func (conn *Database) GetMediaByContentHash(contentHash uint64) (mediaRecordList
 			FROM
 				media
 			WHERE
-				content_hash=$1
-			`
-	rows, err := conn.db.Query(query, contentHash)
+				%s
+			`, where)
+	rows, err := conn.db.Query(query, args...)
 	if err != nil {
 		return
 	}
@@ -255,6 +255,10 @@ func (conn *Database) GetMediaByContentHash(contentHash uint64) (mediaRecordList
 	}
 
 	return
+}
+
+func (conn *Database) GetMediaByContentHash(contentHash uint64) (mediaRecordList []MediaRecord, err error) {
+	return conn.GetMediaByQuery("content_hash=$1", contentHash)
 }
 
 func (conn *Database) DeleteMediaAll() (err error) {
@@ -447,6 +451,15 @@ func (conn *Database) GetDuplicatedMedia() (duplicatedMediaList [][]map[string]a
 	}
 
 	return
+}
+
+func (conn *Database) GetMediaDataSet(where string, args ...any) ([]map[string]any, error) {
+	result, err := conn.GetMediaByQuery(where, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return mediaListToSet(result), nil
 }
 
 func mediaRecordToMap(mediaRecord MediaRecord) map[string]any {

@@ -9,7 +9,9 @@ import (
 	"mediadata"
 	"net/http"
 	"net/http/cgi"
+	"reflect"
 	"router"
+	"strings"
 )
 
 func daemon() (err error) {
@@ -29,6 +31,54 @@ func daemon() (err error) {
 		}
 
 		o, err := mediaRecordSetListToJson(duplicatedMediaList)
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		fmt.Fprint(w, o)
+	})
+
+	router.RegistorEndpoint("POST /"+selfName+"/media/duplicated", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+
+		mediaObjectSetList := [][]any{}
+		err = json.Unmarshal(body, &mediaObjectSetList)
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+
+		mediaSetList := [][]map[string]any{}
+		for _, setList := range mediaObjectSetList {
+			condition := []string{}
+			args := []any{}
+			for i, set := range setList {
+				if v, ok := set.(string); ok {
+					condition = append(condition, fmt.Sprintf(`cache_path LIKE $%d`, i+1))
+					args = append(args, fmt.Sprintf(`%%%s%%`, v))
+				} else if _, ok := set.(map[string]string); ok {
+					log.Printf("no implement: map[string]string\n")
+				} else {
+					log.Printf("unkown type: %s\n", reflect.TypeOf(set))
+				}
+			}
+			mediaSet, err := conn.GetMediaDataSet(strings.Join(condition, " OR "), args...)
+			if err != nil {
+				handleError(w, err)
+				return
+			}
+			if len(mediaSet) >= 2 {
+				mediaSetList = append(mediaSetList, mediaSet)
+			}
+		}
+
+		o, err := mediaRecordSetListToJson(mediaSetList)
 		if err != nil {
 			handleError(w, err)
 			return
