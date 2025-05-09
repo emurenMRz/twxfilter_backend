@@ -144,6 +144,24 @@ func daemon() (err error) {
 		fmt.Fprint(w, string(o))
 	})
 
+	router.RegistorEndpoint("GET /"+selfName+"/thumbnail/:id", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
+		id := values["id"]
+
+		thumbnail, err := conn.GetThumbnailByID(id)
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+
+		if len(thumbnail) == 0 {
+			handleError(w, fmt.Errorf("no thumbnail"))
+			return
+		}
+
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Write(thumbnail)
+	})
+
 	router.RegistorEndpoint("POST /"+selfName+"/media", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {

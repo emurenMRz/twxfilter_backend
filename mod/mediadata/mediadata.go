@@ -1,6 +1,7 @@
 package mediadata
 
 import (
+	"bytes"
 	"diffhash"
 	"encoding/json"
 	"fmt"
@@ -35,18 +36,12 @@ type CacheData struct {
 	ContentLength uint64
 	ContentHash   uint64
 	CachePath     string
+	Thumbnail     []byte
 }
 
 func (m *MediaData) DownloadMedia(baseDir string) (cacheData CacheData, err error) {
-	var thumbnailPath string
-
 	if m.Type == "video" || m.Type == "animated_gif" {
 		cacheData, err = DownloadFile(baseDir, m.VideoUrl)
-		if err != nil {
-			return
-		}
-
-		thumbnailPath, err = MakeThumbnail(cacheData.CachePath, 0)
 		if err != nil {
 			return
 		}
@@ -63,10 +58,15 @@ func (m *MediaData) DownloadMedia(baseDir string) (cacheData CacheData, err erro
 			return
 		}
 
-		thumbnailPath = cacheData.CachePath
 	}
 
-	cacheData.ContentHash = diffhash.CalcDiffHashFromFile(thumbnailPath)
+	thumbnail, err := MakeThumbnail(cacheData.CachePath, 0)
+	if err != nil {
+		return
+	}
+
+	cacheData.ContentHash = diffhash.CalcDiffHashFromImage(thumbnail)
+	cacheData.Thumbnail = thumbnail
 
 	return
 }
@@ -198,33 +198,21 @@ func DownloadFile(baseDir string, targetUrl string) (cacheData CacheData, err er
 	return
 }
 
-func MakeThumbnail(videoPath string, thumbnailWidth uint) (thumbnailPath string, err error) {
+func MakeThumbnail(videoPath string, thumbnailWidth uint) (thumbnail []byte, err error) {
 	if thumbnailWidth == 0 {
 		thumbnailWidth = 160
 	}
 
-	ext := filepath.Ext(videoPath)
-	outputPath := strings.TrimSuffix(videoPath, ext) + "_thumb.jpg"
-
-	if _, err = os.Stat(outputPath); err == nil {
-		return outputPath, nil
-	} else if !os.IsNotExist(err) {
-		return
-	}
-
 	vf := fmt.Sprintf("thumbnail,scale=%d:-1", thumbnailWidth)
-	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "quiet", "-i", videoPath, "-vf", vf, "-frames:v", "1", "-update", "1", "-y", outputPath)
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "quiet", "-i", videoPath, "-vf", vf, "-frames:v", "1", "-f", "image2pipe", "pipe:1")
 
+	var out bytes.Buffer
+	cmd.Stdout = &out
 	if err = cmd.Run(); err != nil {
 		return
 	}
 
-	err = os.Chmod(outputPath, 0666)
-	if err != nil {
-		return
-	}
-
-	return outputPath, nil
+	return out.Bytes(), nil
 }
 
 func DeleteCacheFile(cachePath string, mediaType string) (err error) {

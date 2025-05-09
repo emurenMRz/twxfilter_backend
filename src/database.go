@@ -25,17 +25,18 @@ type Database struct {
 }
 
 type MediaRecord struct {
-	MediaId        string         `json:"id"`
-	ParentUrl      string         `json:"parentUrl"`
-	Type           string         `json:"type"`
-	Url            string         `json:"url"`
-	Timestamp      uint64         `json:"timestamp"`
-	DurationMillis sql.NullInt32  `json:"durationMillis,omitempty"`
-	VideoUrl       sql.NullString `json:"videoUrl,omitempty"`
-	ContentLength  sql.NullInt64  `json:"ContentLength,omitempty"`
-	ContentHash    sql.NullInt64  `json:"ContentHash,omitempty"`
-	CachePath      sql.NullString `json:"CachePath,omitempty"`
-	Removed        bool           `json:"Removed"`
+	MediaId        string
+	ParentUrl      string
+	Type           string
+	Url            string
+	Timestamp      uint64
+	DurationMillis sql.NullInt32
+	VideoUrl       sql.NullString
+	ContentLength  sql.NullInt64
+	ContentHash    sql.NullInt64
+	CachePath      sql.NullString
+	HasThumbnail   bool
+	Removed        bool
 }
 
 func Connect(config ConnectConfig) (conn *Database, err error) {
@@ -57,6 +58,7 @@ func Connect(config ConnectConfig) (conn *Database, err error) {
 				content_length  BIGINT,
 				content_hash    BIGINT,
 				cache_path      TEXT,
+				thumbnail       BYTEA,
 
 				removed         BOOLEAN NOT NULL DEFAULT FALSE,
 				created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -134,7 +136,8 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 				duration_millis,
 				video_url,
 				content_length,
-				cache_path
+				cache_path,
+				CASE WHEN thumbnail IS NOT NULL THEN true ELSE false END AS thumbnail
 			FROM
 				media
 			WHERE
@@ -160,6 +163,7 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 			&mediaRecord.VideoUrl,
 			&mediaRecord.ContentLength,
 			&mediaRecord.CachePath,
+			&mediaRecord.HasThumbnail,
 		)
 		if err != nil {
 			return
@@ -183,6 +187,7 @@ func (conn *Database) GetMediaByID(id string) (mediaRecord MediaRecord, err erro
 				content_length,
 				content_hash,
 				cache_path,
+				CASE WHEN thumbnail IS NOT NULL THEN true ELSE false END AS thumbnail,
 				removed
 			FROM
 				media
@@ -202,6 +207,7 @@ func (conn *Database) GetMediaByID(id string) (mediaRecord MediaRecord, err erro
 		&mediaRecord.ContentLength,
 		&mediaRecord.ContentHash,
 		&mediaRecord.CachePath,
+		&mediaRecord.HasThumbnail,
 		&mediaRecord.Removed,
 	)
 
@@ -220,6 +226,7 @@ func (conn *Database) GetMediaByQuery(where string, args ...any) (mediaRecordLis
 				content_length,
 				content_hash,
 				cache_path,
+				CASE WHEN thumbnail IS NOT NULL THEN true ELSE false END AS thumbnail,
 				removed
 			FROM
 				media
@@ -245,6 +252,7 @@ func (conn *Database) GetMediaByQuery(where string, args ...any) (mediaRecordLis
 			&mediaRecord.ContentLength,
 			&mediaRecord.ContentHash,
 			&mediaRecord.CachePath,
+			&mediaRecord.HasThumbnail,
 			&mediaRecord.Removed,
 		)
 		if err != nil {
@@ -253,6 +261,15 @@ func (conn *Database) GetMediaByQuery(where string, args ...any) (mediaRecordLis
 
 		mediaRecordList = append(mediaRecordList, mediaRecord)
 	}
+
+	return
+}
+
+func (conn *Database) GetThumbnailByID(id string) (thumbnail []byte, err error) {
+	query := `SELECT thumbnail FROM media WHERE media_id=$1`
+	row := conn.db.QueryRow(query, id)
+
+	err = row.Scan(&thumbnail)
 
 	return
 }
@@ -320,8 +337,14 @@ func (conn *Database) GetNoCacheMedia() (mediaList []map[string]any, err error) 
 	return
 }
 
-func (conn *Database) GetCachedVideoMedia() (cachePathList []string, err error) {
+type CachedVideoMedia struct {
+	id   string
+	path string
+}
+
+func (conn *Database) GetCachedVideoMedia() (cachedVideoMediaList []CachedVideoMedia, err error) {
 	query := `SELECT
+				media_id,
 				cache_path
 			FROM
 				media
@@ -337,13 +360,17 @@ func (conn *Database) GetCachedVideoMedia() (cachePathList []string, err error) 
 	defer rows.Close()
 
 	for rows.Next() {
+		var mediaId string
 		var cachePath sql.NullString
-		err = rows.Scan(&cachePath)
+		err = rows.Scan(&mediaId, &cachePath)
 		if err != nil {
 			return
 		}
 		if cachePath.Valid {
-			cachePathList = append(cachePathList, cachePath.String)
+			cachedVideoMediaList = append(cachedVideoMediaList, CachedVideoMedia{
+				id:   mediaId,
+				path: cachePath.String,
+			})
 		}
 	}
 
@@ -351,19 +378,19 @@ func (conn *Database) GetCachedVideoMedia() (cachePathList []string, err error) 
 }
 
 type UnhashedMedia struct {
-	MediaId       string
-	ThumbnailPath string
+	MediaId   string
+	Thumbnail []byte
 }
 
 func (conn *Database) GetUnhashedMedia() (unhashedMediaList []UnhashedMedia, err error) {
 	query := `SELECT
 				media_id,
 				type,
-				cache_path
+				thumbnail
 			FROM
 				media
 			WHERE
-				content_length > 0 AND content_hash IS NULL AND cache_path IS NOT NULL
+				content_length > 0 AND content_hash IS NULL AND thumbnail IS NOT NULL
 			`
 	rows, err := conn.db.Query(query)
 	if err != nil {
@@ -374,20 +401,15 @@ func (conn *Database) GetUnhashedMedia() (unhashedMediaList []UnhashedMedia, err
 	for rows.Next() {
 		var mediaId string
 		var mediaType string
-		var cachePath string
-		err = rows.Scan(&mediaId, &mediaType, &cachePath)
+		var thumbnail []byte
+		err = rows.Scan(&mediaId, &mediaType, &thumbnail)
 		if err != nil {
 			return
 		}
 
-		if mediaType != "photo" {
-			ext := strings.LastIndex(cachePath, ".")
-			cachePath = cachePath[:ext] + "_thumb.jpg"
-		}
-
 		unhashedMediaList = append(unhashedMediaList, UnhashedMedia{
-			MediaId:       mediaId,
-			ThumbnailPath: cachePath,
+			MediaId:   mediaId,
+			Thumbnail: thumbnail,
 		})
 	}
 
@@ -472,7 +494,9 @@ func mediaRecordToMap(mediaRecord MediaRecord) map[string]any {
 		mediaPath.Valid = true
 		thumbPath.String = relativePath
 		thumbPath.Valid = true
-		if mediaRecord.Type != "photo" {
+		if mediaRecord.HasThumbnail {
+			thumbPath.String = GetSelfName() + "/thumbnail/" + mediaRecord.MediaId
+		} else if mediaRecord.Type != "photo" {
 			ext := strings.LastIndex(thumbPath.String, ".")
 			thumbPath.String = thumbPath.String[:ext] + "_thumb.jpg"
 		}
@@ -502,6 +526,11 @@ func mediaListToSet(mediaRecordList []MediaRecord) []map[string]any {
 
 func (conn *Database) SetCacheData(mediaId string, contentLength uint64, contentHash uint64, cachePath string) (err error) {
 	_, err = conn.db.Exec("UPDATE media SET content_length=$2, content_hash=$3, cache_path=$4, updated_at=CURRENT_TIMESTAMP WHERE media_id=$1", mediaId, contentLength, int64(contentHash), cachePath)
+	return
+}
+
+func (conn *Database) SetThumbnail(mediaId string, thumbnail []byte) (err error) {
+	_, err = conn.db.Exec("UPDATE media SET thumbnail=$2, updated_at=CURRENT_TIMESTAMP WHERE media_id=$1", mediaId, thumbnail)
 	return
 }
 

@@ -1,11 +1,13 @@
 package diffhash
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/draw"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"os"
 )
 
@@ -16,16 +18,27 @@ func openImage(inputNane string) (img image.Image, err error) {
 	}
 	defer file.Close()
 
-	_, format, err := image.DecodeConfig(file)
+	return decodeImageFromReader(file)
+}
+
+func decodeImage(inputIamge []byte) (img image.Image, err error) {
+	return decodeImageFromReader(bytes.NewReader(inputIamge))
+}
+
+func decodeImageFromReader(reader io.Reader) (img image.Image, err error) {
+	_, format, err := image.DecodeConfig(reader)
 	if err != nil {
 		return
 	}
-	file.Seek(0, 0)
+
+	if seeker, ok := reader.(io.Seeker); ok {
+		seeker.Seek(0, 0)
+	}
 
 	if format == "jpeg" {
-		img, err = jpeg.Decode(file)
+		img, err = jpeg.Decode(reader)
 	} else if format == "png" {
-		img, err = png.Decode(file)
+		img, err = png.Decode(reader)
 	} else {
 		err = fmt.Errorf("unsupported image format: %s", format)
 	}
@@ -152,18 +165,31 @@ func calcDiffHash(grayImage *image.Gray) (hash uint64) {
 	return
 }
 
-func CalcDiffHashFromFile(inputName string) uint64 {
-	img, err := openImage(inputName)
-	if err != nil {
-		return 0
-	}
-
+func computeImageDiffHash(img image.Image) uint64 {
 	grayImage := toGray(resizeImage(img, 9, 8))
 	if isMonochrome(grayImage) {
 		return 0
 	}
 
 	return calcDiffHash(grayImage)
+}
+
+func CalcDiffHashFromFile(inputName string) uint64 {
+	img, err := openImage(inputName)
+	if err != nil {
+		return 0
+	}
+
+	return computeImageDiffHash(img)
+}
+
+func CalcDiffHashFromImage(inputImage []byte) uint64 {
+	img, err := decodeImage(inputImage)
+	if err != nil {
+		return 0
+	}
+
+	return computeImageDiffHash(img)
 }
 
 func CompDiffHash(hash1 uint64, hash2 uint64) int {

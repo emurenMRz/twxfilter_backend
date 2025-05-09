@@ -60,9 +60,9 @@ func main() {
 			return
 		}
 
-		if calcDiffHashMode || len(cacheDir) > 0 {
-			log.Println("Starts calculating the media difference hash...: " + cacheDir)
-			err := calculateDiffHashs(cacheDir)
+		if calcDiffHashMode {
+			log.Println("Starts calculating the media difference hash...: ")
+			err := calculateDiffHashs()
 			if err != nil {
 				log.Fatal(err)
 			}

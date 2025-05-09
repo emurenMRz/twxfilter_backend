@@ -63,6 +63,10 @@ func cache(cacheDir string) (err error) {
 		if err != nil {
 			log.Println(err)
 		}
+		err = conn.SetThumbnail(m.Id, cacheData.Thumbnail)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	return
@@ -117,12 +121,12 @@ func createThumbnails(cacheDir string) (err error) {
 	}
 	defer conn.Close()
 
-	cachePathList, err := conn.GetCachedVideoMedia()
+	cachedVideoMediaList, err := conn.GetCachedVideoMedia()
 	if err != nil {
 		return
 	}
 
-	if len(cachePathList) == 0 {
+	if len(cachedVideoMediaList) == 0 {
 		err = fmt.Errorf("no cached video media")
 		return
 	}
@@ -132,19 +136,23 @@ func createThumbnails(cacheDir string) (err error) {
 		return
 	}
 
-	for _, cachePath := range cachePathList {
-		thumbnailPath, err := mediadata.MakeThumbnail(cachePath, 0)
+	for _, cachedVideoMedia := range cachedVideoMediaList {
+		thumbnail, err := mediadata.MakeThumbnail(cachedVideoMedia.path, 0)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		log.Println("Thumbnail created: " + thumbnailPath)
+		if err = conn.SetThumbnail(cachedVideoMedia.id, thumbnail); err != nil {
+			log.Println(err)
+			continue
+		}
+		log.Println("Thumbnail created: " + cachedVideoMedia.path)
 	}
 
 	return
 }
 
-func calculateDiffHashs(cacheDir string) (err error) {
+func calculateDiffHashs() (err error) {
 	runData, err := RunDaemon("caching.pid")
 	if err != nil {
 		return
@@ -167,13 +175,8 @@ func calculateDiffHashs(cacheDir string) (err error) {
 		return
 	}
 
-	_, err = makeBaseDir(cacheDir)
-	if err != nil {
-		return
-	}
-
 	for _, unhashedMedia := range unhashedMediaList {
-		contentHash := diffhash.CalcDiffHashFromFile(unhashedMedia.ThumbnailPath)
+		contentHash := diffhash.CalcDiffHashFromImage(unhashedMedia.Thumbnail)
 		log.Printf("Diff-hashed: %s %016x\n", unhashedMedia.MediaId, contentHash)
 		conn.SetContentHashData(unhashedMedia.MediaId, contentHash)
 	}
