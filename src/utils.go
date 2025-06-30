@@ -1,14 +1,14 @@
 package main
 
 import (
+	"datasource"
 	"encoding/json"
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 )
 
-func ReadConnectConfig(confName string) (cc ConnectConfig, err error) {
+func ReadConnectConfig(confName string) (cc datasource.ConnectConfig, err error) {
 	in, err := os.ReadFile(confName)
 	if err != nil {
 		return
@@ -22,7 +22,7 @@ func ReadConnectConfig(confName string) (cc ConnectConfig, err error) {
 	return
 }
 
-func GetConnection() (conn *Database, err error) {
+func GetConnection() (conn *datasource.Database, err error) {
 	execPath, err := ExecPath("connect.json")
 	if err != nil {
 		return
@@ -33,17 +33,12 @@ func GetConnection() (conn *Database, err error) {
 		return
 	}
 
-	conn, err = Connect(connectConfig)
+	conn, err = datasource.Connect(connectConfig)
 	if err != nil {
 		return
 	}
 
 	return
-}
-
-func GetSelfName() string {
-	t := strings.Split(os.Args[0], "/")
-	return t[len(t)-1]
 }
 
 func ExecPath(filename string) (execPath string, err error) {

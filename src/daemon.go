@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"datasource"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,10 +22,11 @@ func daemon() (err error) {
 	}
 	defer conn.Close()
 
-	selfName := GetSelfName()
+	selfName := datasource.GetSelfName()
 
 	router.RegistorEndpoint("GET /"+selfName+"/media/duplicated", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
-		duplicatedMediaList, err := conn.GetDuplicatedMedia()
+		duplicatedMediaList, err := conn.GetHashCluster()
+		// duplicatedMediaList, err := conn.GetDuplicatedMedia()
 		if err != nil {
 			handleError(w, err)
 			return
@@ -288,7 +290,7 @@ func handleError(w http.ResponseWriter, err error) {
 	http.Error(w, msg, code)
 }
 
-func deleteCacheFileCore(conn *Database, id string) error {
+func deleteCacheFileCore(conn *datasource.Database, id string) error {
 	mediaRecord, err := conn.GetMediaByID(id)
 	if err != nil {
 		return NewDaemonError(err, http.StatusNotFound, "")

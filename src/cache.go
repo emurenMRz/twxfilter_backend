@@ -137,16 +137,16 @@ func createThumbnails(cacheDir string) (err error) {
 	}
 
 	for _, cachedVideoMedia := range cachedVideoMediaList {
-		thumbnail, err := mediadata.MakeThumbnail(cachedVideoMedia.path, 0)
+		thumbnail, err := mediadata.MakeThumbnail(cachedVideoMedia.Path, 0)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		if err = conn.SetThumbnail(cachedVideoMedia.id, thumbnail); err != nil {
+		if err = conn.SetThumbnail(cachedVideoMedia.Id, thumbnail); err != nil {
 			log.Println(err)
 			continue
 		}
-		log.Println("Thumbnail created: " + cachedVideoMedia.path)
+		log.Println("Thumbnail created: " + cachedVideoMedia.Path)
 	}
 
 	return

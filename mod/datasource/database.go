@@ -1,9 +1,10 @@
-package main
+package datasource
 
 import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 
@@ -274,7 +275,7 @@ func (conn *Database) GetThumbnailByID(id string) (thumbnail []byte, err error) 
 	return
 }
 
-func (conn *Database) GetMediaByContentHash(contentHash uint64) (mediaRecordList []MediaRecord, err error) {
+func (conn *Database) GetMediaByContentHash(contentHash int64) (mediaRecordList []MediaRecord, err error) {
 	return conn.GetMediaByQuery("content_hash=$1", contentHash)
 }
 
@@ -338,8 +339,8 @@ func (conn *Database) GetNoCacheMedia() (mediaList []map[string]any, err error) 
 }
 
 type CachedVideoMedia struct {
-	id   string
-	path string
+	Id   string
+	Path string
 }
 
 func (conn *Database) GetCachedVideoMedia() (cachedVideoMediaList []CachedVideoMedia, err error) {
@@ -368,8 +369,8 @@ func (conn *Database) GetCachedVideoMedia() (cachedVideoMediaList []CachedVideoM
 		}
 		if cachePath.Valid {
 			cachedVideoMediaList = append(cachedVideoMediaList, CachedVideoMedia{
-				id:   mediaId,
-				path: cachePath.String,
+				Id:   mediaId,
+				Path: cachePath.String,
 			})
 		}
 	}
@@ -417,7 +418,7 @@ func (conn *Database) GetUnhashedMedia() (unhashedMediaList []UnhashedMedia, err
 }
 
 type DuplicatedHash struct {
-	ContentHash uint64
+	ContentHash int64
 	Count       int
 }
 
@@ -428,7 +429,7 @@ func (conn *Database) GetDuplicatedHash() (duplicatedHashList []DuplicatedHash, 
 			FROM
 				media
 			WHERE
-				content_length > 0 AND content_hash > 0
+				content_length > 0 AND content_hash != 0
 			GROUP BY
 				content_hash
 			HAVING
@@ -441,7 +442,7 @@ func (conn *Database) GetDuplicatedHash() (duplicatedHashList []DuplicatedHash, 
 	defer rows.Close()
 
 	for rows.Next() {
-		var contentHash uint64
+		var contentHash int64
 		var count int
 		err = rows.Scan(&contentHash, &count)
 		if err != nil {
@@ -482,6 +483,11 @@ func (conn *Database) GetMediaDataSet(where string, args ...any) ([]map[string]a
 	}
 
 	return mediaListToSet(result), nil
+}
+
+func GetSelfName() string {
+	t := strings.Split(os.Args[0], "/")
+	return t[len(t)-1]
 }
 
 func mediaRecordToMap(mediaRecord MediaRecord) map[string]any {
