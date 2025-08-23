@@ -146,6 +146,42 @@ func daemon() (err error) {
 		fmt.Fprint(w, string(o))
 	})
 
+	router.RegistorEndpoint("GET /"+selfName+"/catalog/index", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
+		dates, err := conn.GetCatalogIndex()
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+
+		o, err := json.Marshal(dates)
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		fmt.Fprint(w, string(o))
+	})
+
+	router.RegistorEndpoint("GET /"+selfName+"/catalog/:date", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
+		date := values["date"]
+		mediaList, err := conn.GetCatalog(date)
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+
+		lines := mediaRecordSet(mediaList)
+		o, err := json.Marshal(lines)
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		fmt.Fprint(w, string(o))
+	})
+
 	router.RegistorEndpoint("GET /"+selfName+"/thumbnail/:id", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		id := values["id"]
 

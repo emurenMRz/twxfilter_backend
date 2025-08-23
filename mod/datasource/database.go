@@ -338,6 +338,78 @@ func (conn *Database) GetNoCacheMedia() (mediaList []map[string]any, err error) 
 	return
 }
 
+func (conn *Database) GetCatalog(date string) (mediaRecordList []map[string]any, err error) {
+	query := `SELECT
+				media_id,
+				parent_url,
+				type,
+				url,
+				timestamp,
+				duration_millis,
+				video_url,
+				content_length,
+				cache_path,
+				CASE WHEN thumbnail IS NOT NULL THEN true ELSE false END AS thumbnail,
+				removed
+			FROM
+				media
+			WHERE
+				removed='f' AND content_length > 0 AND cache_path IS NOT NULL AND TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD') = $1
+			ORDER BY
+				timestamp DESC
+			`
+	rows, err := conn.db.Query(query, date)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mediaRecord MediaRecord
+		err = rows.Scan(
+			&mediaRecord.MediaId,
+			&mediaRecord.ParentUrl,
+			&mediaRecord.Type,
+			&mediaRecord.Url,
+			&mediaRecord.Timestamp,
+			&mediaRecord.DurationMillis,
+			&mediaRecord.VideoUrl,
+			&mediaRecord.ContentLength,
+			&mediaRecord.CachePath,
+			&mediaRecord.HasThumbnail,
+			&mediaRecord.Removed,
+		)
+		if err != nil {
+			return
+		}
+
+		mediaRecordList = append(mediaRecordList, mediaRecordToMap(mediaRecord))
+	}
+
+	return
+}
+
+func (conn *Database) GetCatalogIndex() (dates []string, err error) {
+	query := `SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD')
+			FROM media
+			WHERE removed='f' AND content_length > 0 AND cache_path IS NOT NULL
+			ORDER BY TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD') DESC`
+	rows, err := conn.db.Query(query)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var dateStr string
+		if err = rows.Scan(&dateStr); err != nil {
+			return
+		}
+		dates = append(dates, dateStr)
+	}
+	return
+}
+
 type CachedVideoMedia struct {
 	Id   string
 	Path string
