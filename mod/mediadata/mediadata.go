@@ -217,7 +217,7 @@ func MakeThumbnail(videoPath string, thumbnailWidth uint) (thumbnail []byte, err
 
 func DeleteCacheFile(cachePath string, mediaType string) (err error) {
 	err = os.Remove(cachePath)
-	if !os.IsNotExist(err) {
+	if err != nil && !os.IsNotExist(err) {
 		return
 	}
 
@@ -225,10 +225,10 @@ func DeleteCacheFile(cachePath string, mediaType string) (err error) {
 		ext := filepath.Ext(cachePath)
 		cachePath = strings.TrimSuffix(cachePath, ext) + "_thumb.jpg"
 		err = os.Remove(cachePath)
-		if !os.IsNotExist(err) {
+		if err != nil && !os.IsNotExist(err) {
 			return
 		}
 	}
 
-	return
+	return nil
 }
