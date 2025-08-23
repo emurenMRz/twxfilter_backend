@@ -354,7 +354,7 @@ func (conn *Database) GetCatalog(date string) (mediaRecordList []map[string]any,
 			FROM
 				media
 			WHERE
-				removed='f' AND content_length > 0 AND cache_path IS NOT NULL AND TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD') = $1
+				content_length > 0 AND cache_path IS NOT NULL AND TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD') = $1
 			ORDER BY
 				timestamp DESC
 			`
@@ -392,7 +392,7 @@ func (conn *Database) GetCatalog(date string) (mediaRecordList []map[string]any,
 func (conn *Database) GetCatalogIndex() (dates []string, err error) {
 	query := `SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD')
 			FROM media
-			WHERE removed='f' AND content_length > 0 AND cache_path IS NOT NULL
+			WHERE content_length > 0 AND cache_path IS NOT NULL
 			ORDER BY TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD') DESC`
 	rows, err := conn.db.Query(query)
 	if err != nil {
