@@ -164,14 +164,13 @@ func daemon() (err error) {
 
 	router.RegistorEndpoint("GET /"+selfName+"/catalog/:date", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		date := values["date"]
-		mediaList, err := conn.GetCatalog(date)
+		mediaCatalog, err := conn.GetCatalog(date)
 		if err != nil {
 			handleError(w, err)
 			return
 		}
 
-		lines := mediaRecordSet(mediaList)
-		o, err := json.Marshal(lines)
+		o, err := json.Marshal(mediaCatalog)
 		if err != nil {
 			handleError(w, err)
 			return

@@ -25,21 +25,6 @@ type Database struct {
 	db *sql.DB
 }
 
-type MediaRecord struct {
-	MediaId        string
-	ParentUrl      string
-	Type           string
-	Url            string
-	Timestamp      uint64
-	DurationMillis sql.NullInt32
-	VideoUrl       sql.NullString
-	ContentLength  sql.NullInt64
-	ContentHash    sql.NullInt64
-	CachePath      sql.NullString
-	HasThumbnail   bool
-	Removed        bool
-}
-
 func Connect(config ConnectConfig) (conn *Database, err error) {
 	conn = &Database{config, nil}
 	conn.db, err = sql.Open("postgres", "user="+conn.User+" dbname="+conn.Dbname+" sslmode=disable")
@@ -334,78 +319,6 @@ func (conn *Database) GetNoCacheMedia() (mediaList []map[string]any, err error) 
 	return
 }
 
-func (conn *Database) GetCatalog(date string) (mediaRecordList []map[string]any, err error) {
-	query := `SELECT
-				media_id,
-				parent_url,
-				type,
-				url,
-				timestamp,
-				duration_millis,
-				video_url,
-				content_length,
-				cache_path,
-				CASE WHEN thumbnail IS NOT NULL THEN true ELSE false END AS thumbnail,
-				removed
-			FROM
-				media
-			WHERE
-				content_length > 0 AND cache_path IS NOT NULL AND TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD') = $1
-			ORDER BY
-				timestamp DESC
-			`
-	rows, err := conn.db.Query(query, date)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var mediaRecord MediaRecord
-		err = rows.Scan(
-			&mediaRecord.MediaId,
-			&mediaRecord.ParentUrl,
-			&mediaRecord.Type,
-			&mediaRecord.Url,
-			&mediaRecord.Timestamp,
-			&mediaRecord.DurationMillis,
-			&mediaRecord.VideoUrl,
-			&mediaRecord.ContentLength,
-			&mediaRecord.CachePath,
-			&mediaRecord.HasThumbnail,
-			&mediaRecord.Removed,
-		)
-		if err != nil {
-			return
-		}
-
-		mediaRecordList = append(mediaRecordList, mediaRecordToMap(mediaRecord))
-	}
-
-	return
-}
-
-func (conn *Database) GetCatalogIndex() (dates []string, err error) {
-	query := `SELECT DISTINCT TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD')
-			FROM media
-			WHERE content_length > 0 AND cache_path IS NOT NULL
-			ORDER BY TO_CHAR(TO_TIMESTAMP(timestamp / 1000), 'YYYY-MM-DD') DESC`
-	rows, err := conn.db.Query(query)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var dateStr string
-		if err = rows.Scan(&dateStr); err != nil {
-			return
-		}
-		dates = append(dates, dateStr)
-	}
-	return
-}
-
 type CachedVideoMedia struct {
 	Id   string
 	Path string
@@ -505,23 +418,6 @@ func GetSelfName() string {
 }
 
 func mediaRecordToMap(mediaRecord MediaRecord) map[string]any {
-	var mediaPath sql.NullString
-	var thumbPath sql.NullString
-	if mediaRecord.CachePath.Valid {
-		index := strings.Index(mediaRecord.CachePath.String, ".cache")
-		relativePath := mediaRecord.CachePath.String[index:]
-		mediaPath.String = relativePath
-		mediaPath.Valid = true
-		thumbPath.String = relativePath
-		thumbPath.Valid = true
-		if mediaRecord.HasThumbnail {
-			thumbPath.String = GetSelfName() + "/thumbnail/" + mediaRecord.MediaId
-		} else if mediaRecord.Type != "photo" {
-			ext := strings.LastIndex(thumbPath.String, ".")
-			thumbPath.String = thumbPath.String[:ext] + "_thumb.jpg"
-		}
-	}
-
 	return map[string]any{
 		"mediaId":        mediaRecord.MediaId,
 		"parentUrl":      mediaRecord.ParentUrl,
@@ -530,9 +426,9 @@ func mediaRecordToMap(mediaRecord MediaRecord) map[string]any {
 		"timestamp":      mediaRecord.Timestamp,
 		"durationMillis": mediaRecord.DurationMillis,
 		"videoUrl":       mediaRecord.VideoUrl,
-		"hasCache":       mediaRecord.ContentLength.Valid && mediaRecord.ContentLength.Int64 > 0,
-		"mediaPath":      mediaPath,
-		"thumbPath":      thumbPath,
+		"hasCache":       mediaRecord.HasCache(),
+		"mediaPath":      mediaRecord.GetMediaPath(),
+		"thumbPath":      mediaRecord.GetThumbnailPath(),
 	}
 }
 
