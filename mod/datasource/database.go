@@ -275,10 +275,6 @@ func (conn *Database) GetThumbnailByID(id string) (thumbnail []byte, err error) 
 	return
 }
 
-func (conn *Database) GetMediaByContentHash(contentHash int64) (mediaRecordList []MediaRecord, err error) {
-	return conn.GetMediaByQuery("content_hash=$1", contentHash)
-}
-
 func (conn *Database) DeleteMediaAll() (err error) {
 	_, err = conn.db.Exec("UPDATE media SET removed='t', updated_at=CURRENT_TIMESTAMP WHERE removed='f'")
 	return
@@ -492,60 +488,6 @@ func (conn *Database) GetUnhashedMedia() (unhashedMediaList []UnhashedMedia, err
 type DuplicatedHash struct {
 	ContentHash int64
 	Count       int
-}
-
-func (conn *Database) GetDuplicatedHash() (duplicatedHashList []DuplicatedHash, err error) {
-	query := `SELECT
-				content_hash,
-				COUNT(*)
-			FROM
-				media
-			WHERE
-				content_length > 0 AND content_hash != 0
-			GROUP BY
-				content_hash
-			HAVING
-				COUNT(*) >= 2
-			`
-	rows, err := conn.db.Query(query)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var contentHash int64
-		var count int
-		err = rows.Scan(&contentHash, &count)
-		if err != nil {
-			return
-		}
-
-		duplicatedHashList = append(duplicatedHashList, DuplicatedHash{
-			ContentHash: contentHash,
-			Count:       count,
-		})
-	}
-
-	return
-}
-
-func (conn *Database) GetDuplicatedMedia() (duplicatedMediaList [][]map[string]any, err error) {
-	duplicatedHashList, err := conn.GetDuplicatedHash()
-	if err != nil {
-		return
-	}
-
-	for _, duplicatedHash := range duplicatedHashList {
-		mediaRecordList, err := conn.GetMediaByContentHash(duplicatedHash.ContentHash)
-		if err != nil {
-			return nil, err
-		}
-
-		duplicatedMediaList = append(duplicatedMediaList, mediaListToSet(mediaRecordList))
-	}
-
-	return
 }
 
 func (conn *Database) GetMediaDataSet(where string, args ...any) ([]map[string]any, error) {

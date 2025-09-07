@@ -26,7 +26,6 @@ func daemon() (err error) {
 
 	router.RegistorEndpoint("GET /"+selfName+"/media/duplicated", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		duplicatedMediaList, err := conn.GetHashCluster()
-		// duplicatedMediaList, err := conn.GetDuplicatedMedia()
 		if err != nil {
 			handleError(w, err)
 			return
