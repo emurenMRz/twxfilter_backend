@@ -112,7 +112,7 @@ func (conn *Database) UpsertMedia(columns []string, valueTable [][]any) (err err
 	return
 }
 
-func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
+func (conn *Database) GetMedia() (mediaRecordList []MediaRecord, err error) {
 	query := `SELECT
 				media_id,
 				parent_url,
@@ -155,7 +155,7 @@ func (conn *Database) GetMedia() (mediaList []map[string]any, err error) {
 			return
 		}
 
-		mediaList = append(mediaList, mediaRecordToMap(mediaRecord))
+		mediaRecordList = append(mediaRecordList, mediaRecord)
 	}
 
 	return
@@ -403,41 +403,18 @@ type DuplicatedHash struct {
 	Count       int
 }
 
-func (conn *Database) GetMediaDataSet(where string, args ...any) ([]map[string]any, error) {
+func (conn *Database) GetMediaDataSet(where string, args ...any) ([]MediaRecord, error) {
 	result, err := conn.GetMediaByQuery(where, args...)
 	if err != nil {
 		return nil, err
 	}
 
-	return mediaListToSet(result), nil
+	return result, nil
 }
 
 func GetSelfName() string {
 	t := strings.Split(os.Args[0], "/")
 	return t[len(t)-1]
-}
-
-func mediaRecordToMap(mediaRecord MediaRecord) map[string]any {
-	return map[string]any{
-		"mediaId":        mediaRecord.MediaId,
-		"parentUrl":      mediaRecord.ParentUrl,
-		"type":           mediaRecord.Type,
-		"url":            mediaRecord.Url,
-		"timestamp":      mediaRecord.Timestamp,
-		"durationMillis": mediaRecord.DurationMillis,
-		"videoUrl":       mediaRecord.VideoUrl,
-		"hasCache":       mediaRecord.HasCache(),
-		"mediaPath":      mediaRecord.GetMediaPath(),
-		"thumbPath":      mediaRecord.GetThumbnailPath(),
-	}
-}
-
-func mediaListToSet(mediaRecordList []MediaRecord) []map[string]any {
-	duplicatedMediaSet := []map[string]any{}
-	for _, mediaRecord := range mediaRecordList {
-		duplicatedMediaSet = append(duplicatedMediaSet, mediaRecordToMap(mediaRecord))
-	}
-	return duplicatedMediaSet
 }
 
 func (conn *Database) SetCacheData(mediaId string, contentLength uint64, contentHash uint64, cachePath string) (err error) {

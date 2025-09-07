@@ -44,7 +44,7 @@ func clusterMedia(mediaList []Media) map[string][]string {
 	return clusters
 }
 
-func (conn *Database) GetHashCluster() (duplicatedMediaList [][]map[string]any, err error) {
+func (conn *Database) GetHashCluster() (duplicatedMediaList [][]MediaRecord, err error) {
 	rows, err := conn.db.Query(`SELECT media_id, content_hash FROM media WHERE content_length > 0 AND content_hash != 0`)
 	if err != nil {
 		return
@@ -83,7 +83,7 @@ func (conn *Database) GetHashCluster() (duplicatedMediaList [][]map[string]any, 
 			return nil, err
 		}
 
-		duplicatedMediaList = append(duplicatedMediaList, mediaListToSet(mediaRecordList))
+		duplicatedMediaList = append(duplicatedMediaList, mediaRecordList)
 	}
 
 	return

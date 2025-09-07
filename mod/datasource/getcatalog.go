@@ -1,6 +1,6 @@
 package datasource
 
-func (conn *Database) GetCatalog(date string) (mediaRecordList []MediaCatalog, err error) {
+func (conn *Database) GetCatalog(date string) (mediaRecordList []MediaRecord, err error) {
 	query := `SELECT
 				media_id,
 				parent_url,
@@ -43,7 +43,7 @@ func (conn *Database) GetCatalog(date string) (mediaRecordList []MediaCatalog, e
 			return
 		}
 
-		mediaRecordList = append(mediaRecordList, mediaRecord.ToMediaCatalog())
+		mediaRecordList = append(mediaRecordList, mediaRecord)
 	}
 
 	return

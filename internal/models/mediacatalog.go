@@ -1,4 +1,4 @@
-package datasource
+package models
 
 type MediaCatalog struct {
 	Id             string `json:"id"`

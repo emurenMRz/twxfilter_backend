@@ -60,44 +60,11 @@ func (m MediaRecord) GetThumbnailPath() sql.NullString {
 	return thumbPath
 }
 
-func (m MediaRecord) Complete() MediaRecordComplement {
+func (m MediaRecord) ToCompletion() MediaRecordComplement {
 	return MediaRecordComplement{
 		MediaRecord:   m,
 		HasCache:      m.HasCache(),
 		MediaPath:     m.GetMediaPath(),
 		ThumbnailPath: m.GetThumbnailPath(),
 	}
-}
-
-func (m MediaRecord) ToMediaCatalog() MediaCatalog {
-	c := MediaCatalog{
-		Id:            m.MediaId,
-		ParentUrl:     m.ParentUrl,
-		Type:          m.Type,
-		Url:           m.Url,
-		Timestamp:     m.Timestamp,
-		HasCache:      m.HasCache(),
-		ContentLength: 0,
-	}
-
-	if m.ContentLength.Valid {
-		c.ContentLength = uint64(m.ContentLength.Int64)
-	}
-	if m.DurationMillis.Valid {
-		c.DurationMillis = uint(m.DurationMillis.Int32)
-	}
-	if m.VideoUrl.Valid {
-		c.VideoUrl = m.VideoUrl.String
-	}
-
-	mediaPath := m.GetMediaPath()
-	if mediaPath.Valid {
-		c.MediaPath = mediaPath.String
-	}
-	thumbnailPath := m.GetThumbnailPath()
-	if thumbnailPath.Valid {
-		c.ThumbPath = thumbnailPath.String
-	}
-
-	return c
 }
