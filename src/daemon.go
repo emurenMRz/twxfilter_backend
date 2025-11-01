@@ -11,6 +11,7 @@ import (
 	"net/http/cgi"
 	"reflect"
 	"router"
+	"strconv"
 	"strings"
 
 	"github.com/emurenMRz/twxfilter_backend/internal/mapper"
@@ -147,7 +148,9 @@ func daemon() (err error) {
 	})
 
 	router.RegistorEndpoint("GET /"+selfName+"/catalog/index", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
-		dates, err := conn.GetCatalogIndex()
+		minSizes := getUint64FromQuery(r, "min-size")
+
+		dates, err := conn.GetCatalogIndex(minSizes[0])
 		if err != nil {
 			handleError(w, err)
 			return
@@ -322,6 +325,19 @@ func handleError(w http.ResponseWriter, err error) {
 	}
 
 	http.Error(w, msg, code)
+}
+
+func getUint64FromQuery(r *http.Request, key string) []uint64 {
+	q := r.URL.Query()
+	values := q[key]
+	ret := []uint64{}
+	for _, wv := range values {
+		v, err := strconv.ParseUint(wv, 10, 64)
+		if err == nil {
+			ret = append(ret, v)
+		}
+	}
+	return ret
 }
 
 func deleteCacheFileCore(conn *datasource.Database, id string) error {
