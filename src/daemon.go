@@ -149,8 +149,12 @@ func daemon() (err error) {
 
 	router.RegistorEndpoint("GET /"+selfName+"/catalog/index", func(w http.ResponseWriter, r *http.Request, values router.PathValues) {
 		minSizes := getUint64FromQuery(r, "min-size")
+		minSize := uint64(0)
+		if len(minSizes) > 0 {
+			minSize = minSizes[0]
+		}
 
-		dates, err := conn.GetCatalogIndex(minSizes[0])
+		dates, err := conn.GetCatalogIndex(minSize)
 		if err != nil {
 			handleError(w, err)
 			return
