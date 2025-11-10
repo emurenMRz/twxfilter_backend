@@ -313,7 +313,7 @@ func daemon() (err error) {
 		fmt.Fprint(w, "Succeed")
 	})
 
-	cgi.Serve(router.Router)
+	cgi.Serve(router.CorsRouter)
 	return
 }
 

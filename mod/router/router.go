@@ -67,3 +67,16 @@ var Router = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 	http.NotFound(w, r)
 })
+
+var CorsRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "chrome-extension://cmmngpgcdkmdjbhkllbdfkcchggpkljc")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	Router.ServeHTTP(w, r)
+})
