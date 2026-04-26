@@ -154,13 +154,13 @@ func daemon() (err error) {
 			minSize = minSizes[0]
 		}
 
-		dates, err := conn.GetCatalogIndex(minSize)
+		index, err := conn.GetCatalogIndex(minSize)
 		if err != nil {
 			handleError(w, err)
 			return
 		}
 
-		o, err := json.Marshal(dates)
+		o, err := json.Marshal(index)
 		if err != nil {
 			handleError(w, err)
 			return
