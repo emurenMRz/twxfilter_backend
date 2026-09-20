@@ -1,7 +1,9 @@
 package datasource
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 
 	_ "github.com/lib/pq"
@@ -85,6 +87,10 @@ func (conn *Database) GetHashCluster() (duplicatedMediaList [][]MediaRecord, err
 
 		duplicatedMediaList = append(duplicatedMediaList, mediaRecordList)
 	}
+
+	slices.SortStableFunc(duplicatedMediaList, func(a, b []MediaRecord) int {
+		return cmp.Compare(a[0].MediaId, b[0].MediaId)
+	})
 
 	return
 }
